@@ -11,6 +11,12 @@ from rest_framework.decorators import api_view
 from django.contrib.auth.hashers import make_password
 from django.http import HttpResponse
 from .serializers import RegisterSerializer  # Ensure you have a serializer for registration
+from django.shortcuts import redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import logout
+from allauth.socialaccount.models import SocialAccount
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer  # Add this line
@@ -34,3 +40,35 @@ class LoginView(TokenObtainPairView):
 
 def home(request):
     return HttpResponse("Welcome to the Home Page")
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def user_info(request):
+    user = request.user
+    try:
+        google_account = SocialAccount.objects.get(user=user, provider='google')
+        extra_data = google_account.extra_data
+        return Response({
+            'username': user.username,
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'google_id': extra_data.get('sub'),
+            'picture': extra_data.get('picture'),
+        })
+    except SocialAccount.DoesNotExist:
+        return Response({
+            'username': user.username,
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+        })
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout_view(request):
+    logout(request)
+    return Response({"message": "Successfully logged out."}, status=status.HTTP_200_OK)
+
+def google_login(request):
+    return redirect('accounts/google/login/')

@@ -8,3 +8,6 @@ drf-yasg
 transformers
 torch
 django-cors-headers
+django-allauth
+cryptography
+dj-rest-auth

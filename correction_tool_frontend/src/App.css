@@ -67,10 +67,22 @@ button {
   position: absolute;
   top: 20px;
   right: 20px;
+  z-index: 1000; /* Ensure it appears above other elements */
 }
 
 .auth-buttons button {
   margin-left: 10px;
+  background-color: #007bff; /* Change to a spam-like color */
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.auth-buttons button:hover {
+  background-color: #cc0000; /* Darker shade on hover */
 }
 
 .modal {
@@ -108,4 +120,18 @@ button {
 
 .modal-content button {
   margin-top: 10px;
+}
+
+.text-field {
+  border: 2px solid #007bff; /* More prominent border */
+  border-radius: 5px;
+  padding: 10px; /* Increase padding */
+  min-height: 200px; /* Increase minimum height */
+  font-size: 16px; /* Adjust font size for better readability */
+  outline: none; /* Remove default outline */
+  transition: border-color 0.3s; /* Smooth transition for border color */
+}
+
+.text-field:focus {
+  border-color: #0056b3;
 }
