@@ -11,7 +11,7 @@ Follow these instructions to get a copy of the project up and running on your lo
 
 ### Clone the Repository
 ```bash
-git clone https://github.com/yassine-el-haddad/correction-tool.git
+git clone https://github.com/imred42/correction_tool.git
 cd correction-tool
 ```
 

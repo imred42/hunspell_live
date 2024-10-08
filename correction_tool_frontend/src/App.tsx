@@ -1,35 +1,57 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useState } from 'react';
+import axios from 'axios';
+import './App.css';
+import Login from './components/Login';
+import Register from './components/Register';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [text, setText] = useState('');
+  const [result, setResult] = useState<null | {
+    is_correct: boolean;
+    original_text: string;
+    corrected_text: string;
+  }>(null);
+  const [showLogin, setShowLogin] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
+
+  const handleCheck = async () => {
+    try {
+      const response = await axios.post('http://localhost:8000/api/check-grammar/', { text });
+      setResult(response.data);
+      setText(response.data.corrected_text);
+    } catch (error) {
+      console.error('Error checking grammar:', error);
+    }
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div className="App">
+      <div className="auth-buttons">
+        <button onClick={() => setShowLogin(true)}>Login</button>
+        <button onClick={() => setShowRegister(true)}>Register</button>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+      <h1>Grammar Checker</h1>
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="Enter text to check grammar..."
+        rows={5}
+        cols={50}
+      />
+      <br />
+      <button onClick={handleCheck}>Check Grammar</button>
+      {result && (
+        <div className="result">
+          <h2>Result:</h2>
+          <p>Is Correct: {result.is_correct ? 'Yes' : 'No'}</p>
+          <p>Original Text: {result.original_text}</p>
+          <p>Corrected Text: {result.corrected_text}</p>
+        </div>
+      )}
+      {showLogin && <Login onClose={() => setShowLogin(false)} />}
+      {showRegister && <Register onClose={() => setShowRegister(false)} />}
+    </div>
+  );
 }
 
-export default App
+export default App;

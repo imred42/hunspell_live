@@ -5,3 +5,6 @@ djangorestframework
 djangorestframework-simplejwt
 psycopg2-binary
 drf-yasg
+transformers
+torch
+django-cors-headers
