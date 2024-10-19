@@ -1,10 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Editor, EditorState, CompositeDecorator, ContentState } from 'draft-js';
+import 'draft-js/dist/Draft.css';
 import CustomDropdown from './CustomDropdown';
 import { apiRequest } from '../utils/config';
 
+// Add this polyfill at the top of the file
+if (typeof global === 'undefined') {
+  (window as any).global = window;
+}
+
 const HomePage = () => {
   const [selectedOption, setSelectedOption] = useState({ label: 'English', value: 'en' });
-  const [text, setText] = useState('');
+  const [editorState, setEditorState] = useState(EditorState.createEmpty());
   const [spellingResults, setSpellingResults] = useState([]);
 
   const options = [
@@ -24,12 +31,13 @@ const HomePage = () => {
     setSelectedOption(option);
   };
 
-  const handleTextChange = (event) => {
-    setText(event.target.value);
+  const handleTextChange = (newEditorState) => {
+    setEditorState(newEditorState);
     setSpellingResults([]); // Clear spelling results when text changes
   };
 
   const handleCheckSpelling = async () => {
+    const text = editorState.getCurrentContent().getPlainText();
     const words = text.split(/\s+/).filter(word => word.length > 0);
     const results = [];
 
@@ -57,30 +65,33 @@ const HomePage = () => {
       }
 
       setSpellingResults(results);
+      updateEditorWithSpellingResults(results);
     } catch (error) {
       console.error('Error checking spelling:', error);
       // You might want to show an error message to the user here
     }
   };
 
-  const renderTextWithUnderlines = () => {
-    if (spellingResults.length === 0) return text;
+  const updateEditorWithSpellingResults = (results) => {
+    const decorator = new CompositeDecorator([
+      {
+        strategy: (contentBlock, callback) => {
+          results.forEach(result => {
+            const start = result.index;
+            const end = start + result.word.length;
+            callback(start, end);
+          });
+        },
+        component: ({ children }) => (
+          <span style={{ textDecoration: 'underline', textDecorationColor: 'red' }}>
+            {children}
+          </span>
+        ),
+      },
+    ]);
 
-    let result = [];
-    let lastIndex = 0;
-
-    spellingResults.forEach((misspelling) => {
-      result.push(text.slice(lastIndex, misspelling.index));
-      result.push(
-        <span key={misspelling.index} style={{ textDecoration: 'underline', textDecorationColor: 'red' }}>
-          {text.slice(misspelling.index, misspelling.index + misspelling.word.length)}
-        </span>
-      );
-      lastIndex = misspelling.index + misspelling.word.length;
-    });
-
-    result.push(text.slice(lastIndex));
-    return result;
+    const newEditorState = EditorState.set(editorState, { decorator });
+    setEditorState(newEditorState);
   };
 
   return (
@@ -93,22 +104,23 @@ const HomePage = () => {
             value={selectedOption}
             onChange={handleSelectChange}
           />
-          <textarea
-            value={text}
-            onChange={handleTextChange}
-            placeholder="Enter or paste your text here to check spelling"
+          <div
             style={{ 
-              width: '100%', 
-              height: '300px', 
-              padding: '8px',
-              marginTop: '16px',
-              marginBottom: '16px',
               border: '1px solid #008fee',
               borderRadius: '4px',
-              resize: 'vertical',
-              fontSize: '24px'
+              marginTop: '16px',
+              marginBottom: '16px',
+              padding: '8px',
+              fontSize: '24px',
+              minHeight: '300px',
             }}
-          />
+          >
+            <Editor
+              editorState={editorState}
+              onChange={handleTextChange}
+              placeholder="Enter or paste your text here to check spelling"
+            />
+          </div>
           <button
             onClick={handleCheckSpelling}
             style={{
@@ -124,22 +136,6 @@ const HomePage = () => {
           >
             Check Spelling
           </button>
-          {spellingResults.length > 0 && (
-            <div
-              style={{ 
-                width: '100%', 
-                marginTop: '16px',
-                padding: '8px',
-                border: '1px solid #008fee',
-                borderRadius: '4px',
-                fontSize: '24px',
-                whiteSpace: 'pre-wrap',
-                wordWrap: 'break-word',
-              }}
-            >
-              {renderTextWithUnderlines()}
-            </div>
-          )}
         </div>
       </div>
     </div>
