@@ -19,6 +19,7 @@
     "bootstrap": "^5.3.3",
     "framer-motion": "^11.11.9",
     "lucide-react": "^0.451.0",
+    "primeicons": "^7.0.0",
     "primereact": "^10.8.4",
     "react": "^18.2.0",
     "react-bootstrap": "^2.10.5",

@@ -1,48 +1,57 @@
 import React, { useState } from 'react';
+import CustomDropdown from './CustomDropdown';
 
-const HomePage: React.FC = () => {
-  const [selectedOption, setSelectedOption] = useState('');
+const HomePage = () => {
+  const [selectedOption, setSelectedOption] = useState({ label: 'English', value: 'en' });
   const [text, setText] = useState('');
 
-  const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedOption(event.target.value);
+  const options = [
+    { label: 'English', value: 'en' },
+    { label: 'Spanish', value: 'es' },
+    { label: 'French', value: 'fr' },
+    { label: 'German', value: 'de' },
+    { label: 'Italian', value: 'it' },
+    { label: 'Portuguese', value: 'pt' },
+    { label: 'Russian', value: 'ru' },
+    { label: 'Chinese', value: 'zh' },
+    { label: 'Japanese', value: 'ja' },
+    { label: 'Korean', value: 'ko' },
+  ];
+
+  const handleSelectChange = (option) => {
+    setSelectedOption(option);
   };
 
-  const handleTextChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleTextChange = (event) => {
     setText(event.target.value);
   };
 
   return (
-    <div>
-      <div style={{ maxWidth: '1200px', width: '800px', height: '800px', margin: '0 auto', padding: '48px 0' }}>
-        <h1 style={{ textAlign: 'center', marginBottom: '32px' }}>Correction Tool</h1>
-        <select
-          value={selectedOption}
-          onChange={handleSelectChange}
-          style={{ width: '100%', marginBottom: '16px', padding: '8px' }}
-        >
-          <option value="">Select an option</option>
-          <option value="option1">Option 1</option>
-          <option value="option2">Option 2</option>
-          <option value="option3">Option 3</option>
-        </select>
-        <textarea
-          value={text}
-          onChange={handleTextChange}
-          placeholder="Enter your text here..."
-          style={{ 
-            width: '100%', 
-            height: '40%',
-            minHeight: '300px', 
-            padding: '8px',
-            border: '1px solid #21a1f6',
-            borderRadius: '5px',
-            display: 'block',
-            margin: '0 auto',
-            wordWrap: 'break-word',
-            whiteSpace: 'pre-wrap'
-          }}
-        />
+    <div style={{ minHeight: '100vh', width: '900px', padding: '48px 0' }}>
+      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 16px' }}>
+        <h1 style={{ fontSize: '38px', fontWeight: 'bold', textAlign: 'center', marginBottom: '32px' }}>Spell Checker Tool</h1>
+        <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '24px'}}>
+          <CustomDropdown
+            options={options}
+            value={selectedOption}
+            onChange={handleSelectChange}
+          />
+          <textarea
+            value={text}
+            onChange={handleTextChange}
+            placeholder="Enter or paste your text here to check spelling"
+            style={{ 
+              width: '100%', 
+              height: '300px', 
+              padding: '8px',
+              marginTop: '16px',
+              border: '1px solid #008fee',
+              borderRadius: '4px',
+              resize: 'vertical',
+              fontSize: '24px'
+            }}
+          />
+        </div>
       </div>
     </div>
   );
