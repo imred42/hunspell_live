@@ -21,10 +21,6 @@ const HomePage = () => {
     { label: 'German', value: 'de' },
     { label: 'Italian', value: 'it' },
     { label: 'Portuguese', value: 'pt' },
-    { label: 'Russian', value: 'ru' },
-    { label: 'Chinese', value: 'zh' },
-    { label: 'Japanese', value: 'ja' },
-    { label: 'Korean', value: 'ko' },
   ];
 
   const handleSelectChange = (option) => {
@@ -48,7 +44,10 @@ const HomePage = () => {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ word: words[i] }),
+          body: JSON.stringify({ 
+            word: words[i],
+            language: selectedOption.value 
+          }),
         });
 
         if (!response.ok) {
@@ -68,7 +67,6 @@ const HomePage = () => {
       updateEditorWithSpellingResults(results);
     } catch (error) {
       console.error('Error checking spelling:', error);
-      // You might want to show an error message to the user here
     }
   };
 
