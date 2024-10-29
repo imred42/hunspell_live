@@ -16,11 +16,11 @@ const HomePage = () => {
 
   const options = [
     { label: 'English', value: 'en' },
-    { label: 'Spanish', value: 'es' },
-    { label: 'French', value: 'fr' },
-    { label: 'German', value: 'de' },
-    { label: 'Italian', value: 'it' },
-    { label: 'Portuguese', value: 'pt' },
+    { label: 'Español', value: 'es' },
+    { label: 'Français', value: 'fr' },
+    { label: 'Deutsch', value: 'de' },
+    { label: 'Italiano', value: 'it' },
+    { label: 'Português', value: 'pt' },
   ];
 
   const handleSelectChange = (option) => {
