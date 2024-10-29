@@ -3,20 +3,140 @@ import { Editor, EditorState, CompositeDecorator, ContentState } from 'draft-js'
 import 'draft-js/dist/Draft.css';
 import CustomDropdown from './CustomDropdown';
 import { apiRequest } from '../utils/config';
-import DraggableWindow from './DraggableWindow';
+import Draggable from "react-draggable";
 
-// Add this polyfill at the top of the file
-if (typeof global === 'undefined') {
-  (window as any).global = window;
+// WordCards Component
+interface WordCardsProps {
+  suggestions: string[];
+  language: string;
+  onWordClick: (word: string) => void;
 }
 
-const HomePage = () => {
+const WordCards: React.FC<WordCardsProps> = ({
+  suggestions,
+  language,
+  onWordClick
+}) => {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {suggestions.map((word, index) => (
+        <div
+          key={`${word}-${index}`}
+          className="px-3 py-1.5 rounded-lg shadow-sm flex items-center justify-center hover:opacity-80 transition-opacity cursor-pointer"
+          style={{ backgroundColor: '#2d2d2d' }}
+          onClick={() => onWordClick(word)}
+        >
+          <span className="text-white text-sm font-medium">{word}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// DraggableWindow Component
+interface DraggableWindowProps {
+  isOpen: boolean;
+  onClose: () => void;
+  initialPosition: { x: number; y: number };
+  parentRef: React.RefObject<HTMLDivElement>;
+  content: React.ReactNode;
+}
+
+const DraggableWindow: React.FC<DraggableWindowProps> = ({
+  isOpen,
+  onClose,
+  initialPosition,
+  parentRef,
+  content,
+}) => {
+  const nodeRef = useRef(null);
+  const [position, setPosition] = useState(initialPosition);
+
+  useEffect(() => {
+    if (parentRef.current) {
+      const parentRect = parentRef.current.getBoundingClientRect();
+      setPosition({
+        x: initialPosition.x - parentRect.left,
+        y: initialPosition.y - parentRect.top,
+      });
+    }
+  }, [initialPosition, parentRef]);
+
+  const miniWindowStyle: React.CSSProperties = {
+    position: "absolute",
+    left: position.x,
+    top: position.y,
+    backgroundColor: "#1e1e1e",
+    border: "1px solid #000000",
+    borderRadius: "8px",
+    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08)",
+    width: "300px",
+    maxHeight: "300px",
+    overflow: "auto",
+    cursor: "move",
+    zIndex: 1000,
+    color: "#fff",
+    fontSize: "20px",
+    fontFamily: "'Inter', sans-serif",
+  };
+
+  const handleStyle: React.CSSProperties = {
+    padding: "4px",
+    backgroundColor: "rgba(57, 3, 207, 0.683)",
+    marginBottom: "2px",
+    cursor: "move",
+    borderTopLeftRadius: "8px",
+    borderTopRightRadius: "8px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  };
+
+  const closeButtonStyle: React.CSSProperties = {
+    background: "none",
+    border: "none",
+    color: "#fff",
+    fontSize: "20px",
+    cursor: "pointer",
+    padding: "0",
+  };
+
+  const contentStyle: React.CSSProperties = {
+    padding: "12px",
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <Draggable nodeRef={nodeRef} handle=".handle" defaultPosition={position}>
+      <div ref={nodeRef} style={miniWindowStyle}>
+        <div className="handle" style={handleStyle}>
+          <span></span>
+          <button onClick={onClose} style={closeButtonStyle}>
+            ×
+          </button>
+        </div>
+        <div style={contentStyle}>
+          {content}
+        </div>
+      </div>
+    </Draggable>
+  );
+};
+
+// Main HomePage Component
+interface SpellingSuggestion {
+  suggestions: string[];
+  language: string;
+}
+
+const HomePage: React.FC = () => {
   const [selectedOption, setSelectedOption] = useState({ label: 'English', value: 'en' });
   const [editorState, setEditorState] = useState(EditorState.createEmpty());
-  const [spellingResults, setSpellingResults] = useState([]);
+  const [spellingResults, setSpellingResults] = useState<Array<{ index: number; word: string }>>([]);
   const [isWindowOpen, setIsWindowOpen] = useState(false);
   const [windowPosition, setWindowPosition] = useState({ x: 0, y: 0 });
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [currentSuggestions, setCurrentSuggestions] = useState<SpellingSuggestion | null>(null);
   const [selectedWord, setSelectedWord] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -29,13 +149,13 @@ const HomePage = () => {
     { label: 'Português', value: 'pt' },
   ];
 
-  const handleSelectChange = (option) => {
+  const handleSelectChange = (option: { label: string; value: string }) => {
     setSelectedOption(option);
   };
 
-  const handleTextChange = (newEditorState) => {
+  const handleTextChange = (newEditorState: EditorState) => {
     setEditorState(newEditorState);
-    setSpellingResults([]); // Clear spelling results when text changes
+    setSpellingResults([]);
   };
 
   const handleCheckSpelling = async () => {
@@ -80,6 +200,7 @@ const HomePage = () => {
     setSelectedWord(word);
     setWindowPosition({ x: event.clientX, y: event.clientY });
     setIsWindowOpen(true);
+    setCurrentSuggestions(null); // Reset suggestions while loading
 
     try {
       const response = await apiRequest('/api/suggest-corrections/', {
@@ -97,14 +218,20 @@ const HomePage = () => {
         throw new Error('Failed to get suggestions');
       }
 
-      const result = await response.json();
-      setSuggestions(result.suggestions || []);
+      const result: SpellingSuggestion = await response.json();
+      setCurrentSuggestions(result);
     } catch (error) {
       console.error('Error getting suggestions:', error);
     }
   };
 
-  const updateEditorWithSpellingResults = (results) => {
+  const handleSuggestionClick = (suggestion: string) => {
+    // Here you can implement the logic to replace the word in the editor
+    console.log('Selected suggestion:', suggestion);
+    setIsWindowOpen(false);
+  };
+
+  const updateEditorWithSpellingResults = (results: Array<{ index: number; word: string }>) => {
     const decorator = new CompositeDecorator([
       {
         strategy: (contentBlock, callback) => {
@@ -116,7 +243,7 @@ const HomePage = () => {
         },
         component: ({ children, decoratedText }) => (
           <span 
-            style={{ textDecoration: 'underline', textDecorationColor: 'red', cursor: 'text' }}
+            style={{ textDecoration: 'underline', textDecorationColor: 'red', cursor: 'pointer' }}
             onClick={(e) => handleWordClick(decoratedText, e)}
           >
             {children}
@@ -132,7 +259,9 @@ const HomePage = () => {
   return (
     <div ref={containerRef} style={{ minHeight: '100vh', width: '900px', padding: '48px 0' }}>
       <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 16px' }}>
-        <h1 style={{ fontSize: '38px', fontWeight: 'bold', textAlign: 'center', marginBottom: '32px' }}>Spell Checker Tool</h1>
+        <h1 style={{ fontSize: '38px', fontWeight: 'bold', textAlign: 'center', marginBottom: '32px' }}>
+          Spell Checker Tool
+        </h1>
         <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '24px'}}>
           <CustomDropdown
             options={options}
@@ -180,23 +309,14 @@ const HomePage = () => {
         parentRef={containerRef}
         content={
           <div>
-            {suggestions.length > 0 ? (
-              <ul style={{ listStyle: 'none', padding: 0 }}>
-                {suggestions.map((suggestion, index) => (
-                  <li 
-                    key={index}
-                    style={{ 
-                      padding: '2px',
-                      cursor: 'pointer',
-                      ':hover': { backgroundColor: '#ffffff' }
-                    }}
-                  >
-                    {suggestion}
-                  </li>
-                ))}
-              </ul>
+            {currentSuggestions ? (
+              <WordCards
+                suggestions={currentSuggestions.suggestions}
+                language={currentSuggestions.language}
+                onWordClick={handleSuggestionClick}
+              />
             ) : (
-              <p>Loading suggestions...</p>
+              <p className="text-center text-white text-sm">Loading suggestions...</p>
             )}
           </div>
         }
