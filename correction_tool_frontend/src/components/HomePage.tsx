@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Editor, EditorState, CompositeDecorator, ContentState } from 'draft-js';
 import 'draft-js/dist/Draft.css';
 import CustomDropdown from './CustomDropdown';
 import { apiRequest } from '../utils/config';
+import DraggableWindow from './DraggableWindow';
 
 // Add this polyfill at the top of the file
 if (typeof global === 'undefined') {
@@ -13,6 +14,11 @@ const HomePage = () => {
   const [selectedOption, setSelectedOption] = useState({ label: 'English', value: 'en' });
   const [editorState, setEditorState] = useState(EditorState.createEmpty());
   const [spellingResults, setSpellingResults] = useState([]);
+  const [isWindowOpen, setIsWindowOpen] = useState(false);
+  const [windowPosition, setWindowPosition] = useState({ x: 0, y: 0 });
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [selectedWord, setSelectedWord] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const options = [
     { label: 'English', value: 'en' },
@@ -70,6 +76,34 @@ const HomePage = () => {
     }
   };
 
+  const handleWordClick = async (word: string, event: React.MouseEvent) => {
+    setSelectedWord(word);
+    setWindowPosition({ x: event.clientX, y: event.clientY });
+    setIsWindowOpen(true);
+
+    try {
+      const response = await apiRequest('/api/suggest-corrections/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          word: word,
+          language: selectedOption.value 
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get suggestions');
+      }
+
+      const result = await response.json();
+      setSuggestions(result.suggestions || []);
+    } catch (error) {
+      console.error('Error getting suggestions:', error);
+    }
+  };
+
   const updateEditorWithSpellingResults = (results) => {
     const decorator = new CompositeDecorator([
       {
@@ -80,8 +114,11 @@ const HomePage = () => {
             callback(start, end);
           });
         },
-        component: ({ children }) => (
-          <span style={{ textDecoration: 'underline', textDecorationColor: 'red' }}>
+        component: ({ children, decoratedText }) => (
+          <span 
+            style={{ textDecoration: 'underline', textDecorationColor: 'red', cursor: 'text' }}
+            onClick={(e) => handleWordClick(decoratedText, e)}
+          >
             {children}
           </span>
         ),
@@ -93,7 +130,7 @@ const HomePage = () => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', width: '900px', padding: '48px 0' }}>
+    <div ref={containerRef} style={{ minHeight: '100vh', width: '900px', padding: '48px 0' }}>
       <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 16px' }}>
         <h1 style={{ fontSize: '38px', fontWeight: 'bold', textAlign: 'center', marginBottom: '32px' }}>Spell Checker Tool</h1>
         <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '24px'}}>
@@ -136,6 +173,34 @@ const HomePage = () => {
           </button>
         </div>
       </div>
+      <DraggableWindow
+        isOpen={isWindowOpen}
+        onClose={() => setIsWindowOpen(false)}
+        initialPosition={windowPosition}
+        parentRef={containerRef}
+        content={
+          <div>
+            {suggestions.length > 0 ? (
+              <ul style={{ listStyle: 'none', padding: 0 }}>
+                {suggestions.map((suggestion, index) => (
+                  <li 
+                    key={index}
+                    style={{ 
+                      padding: '2px',
+                      cursor: 'pointer',
+                      ':hover': { backgroundColor: '#ffffff' }
+                    }}
+                  >
+                    {suggestion}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>Loading suggestions...</p>
+            )}
+          </div>
+        }
+      />
     </div>
   );
 };
