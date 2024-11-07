@@ -22,9 +22,37 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({
   useEffect(() => {
     if (parentRef.current) {
       const parentRect = parentRef.current.getBoundingClientRect();
+      const windowWidth = 300; // Width of the draggable window
+      const windowHeight = 300; // Height of the draggable window
+      const margin = 20; // Margin between the cursor and the window
+
+      // Calculate x and y positions relative to the parent container
+      let xPos = initialPosition.x - parentRect.left - windowWidth / 2;
+      let yPos = initialPosition.y - parentRect.top + margin;
+
+      // Ensure the window doesn't overflow to the left
+      if (xPos < margin) {
+        xPos = margin;
+      }
+
+      // Ensure the window doesn't overflow to the right
+      if (xPos + windowWidth > parentRect.width - margin) {
+        xPos = parentRect.width - windowWidth - margin;
+      }
+
+      // Ensure the window doesn't overflow to the bottom
+      if (yPos + windowHeight > parentRect.height - margin) {
+        // Position above the cursor if there's not enough space below
+        yPos = initialPosition.y - parentRect.top - windowHeight - margin;
+        // Ensure it doesn't overflow the top
+        if (yPos < margin) {
+          yPos = margin;
+        }
+      }
+
       setPosition({
-        x: initialPosition.x - parentRect.left,
-        y: initialPosition.y - parentRect.top,
+        x: xPos,
+        y: yPos,
       });
     }
   }, [initialPosition, parentRef]);
@@ -51,6 +79,7 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({
           color: "#fff",
           fontSize: "20px",
           fontFamily: "'Inter', sans-serif",
+          transition: "left 0.3s ease, top 0.3s ease",
         }}
       >
         <div 

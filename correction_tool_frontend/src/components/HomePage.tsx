@@ -118,8 +118,15 @@ const HomePage: React.FC = () => {
     end: number,
     event: React.MouseEvent
   ) => {
+    // Calculate position based on mouse cursor
+    const mouseX = event.clientX;
+    const mouseY = event.clientY;
+    
     setSelectedWordInfo({ word, start, end });
-    setWindowPosition({ x: event.clientX, y: event.clientY });
+    setWindowPosition({ 
+      x: mouseX, 
+      y: mouseY 
+    });
     setIsWindowOpen(true);
     setCurrentSuggestions(null);
 
@@ -284,6 +291,7 @@ const HomePage: React.FC = () => {
         minHeight: "100vh",
         width: "900px",
         padding: "48px 0",
+        position: "relative", // Ensure the container is positioned relative for absolute children
       }}
       onClick={focusEditor}
     >
