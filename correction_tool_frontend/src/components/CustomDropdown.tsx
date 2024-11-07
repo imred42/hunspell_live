@@ -42,7 +42,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({ options, value, onChang
   return (
     <div 
       ref={dropdownRef}
-      style={{ position: 'relative', width: '100%' }}
+      style={{ position: 'relative', width: '100%',padding:'20px 0px' }}
     >
       <button
         onClick={() => setIsOpen(!isOpen)}

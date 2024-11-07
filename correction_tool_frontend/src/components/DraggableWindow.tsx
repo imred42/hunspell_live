@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useState, useEffect } from 'react';
 import Draggable from "react-draggable";
 
 interface DraggableWindowProps {
@@ -29,59 +29,60 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({
     }
   }, [initialPosition, parentRef]);
 
-  const miniWindowStyle: React.CSSProperties = {
-    position: "absolute",
-    left: position.x,
-    top: position.y,
-    padding: "0",
-    backgroundColor: "#1e1e1e",
-    border: "1px solid #000000",
-    borderRadius: "8px",
-    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08)",
-    width: "240px",
-    maxHeight: "200px",
-    overflow: "auto",
-    cursor: "move",
-    zIndex: 1000,
-    color: "#fff",
-    fontSize: "20px",
-    fontFamily: "'Inter', sans-serif",
-  };
-
-  const handleStyle: React.CSSProperties = {
-    padding: "4px",
-    backgroundColor: "rgba(57, 3, 207, 0.683)",
-    marginBottom: "2px",
-    cursor: "move",
-    borderTopLeftRadius: "8px",
-    borderTopRightRadius: "8px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  };
-
-  const closeButtonStyle: React.CSSProperties = {
-    background: "none",
-    border: "none",
-    color: "#fff",
-    fontSize: "20px",
-    cursor: "pointer",
-    padding: "0",
-  };
-
   if (!isOpen) return null;
 
   return (
     <Draggable nodeRef={nodeRef} handle=".handle" defaultPosition={position}>
-      <div ref={nodeRef} style={miniWindowStyle}>
-        <div className="handle" style={handleStyle}>
-          {/* <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 500 }}>Suggestions</h4> */}
+      <div 
+        ref={nodeRef} 
+        style={{
+          position: "absolute",
+          left: position.x,
+          top: position.y,
+          backgroundColor: "#1e1e1e",
+          border: "1px solid #000000",
+          borderRadius: "8px",
+          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08)",
+          width: "300px",
+          maxHeight: "300px",
+          overflow: "auto",
+          cursor: "move",
+          zIndex: 1000,
+          color: "#fff",
+          fontSize: "20px",
+          fontFamily: "'Inter', sans-serif",
+        }}
+      >
+        <div 
+          className="handle" 
+          style={{
+            padding: "4px",
+            backgroundColor: "rgba(57, 3, 207, 0.683)",
+            marginBottom: "2px",
+            cursor: "move",
+            borderTopLeftRadius: "8px",
+            borderTopRightRadius: "8px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
           <span></span>
-          <button onClick={onClose} style={closeButtonStyle}>
+          <button 
+            onClick={onClose}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#fff",
+              fontSize: "20px",
+              cursor: "pointer",
+              padding: "0",
+            }}
+          >
             ×
           </button>
         </div>
-        <div style={{ padding: "10px" }}>
+        <div style={{ padding: "12px" }}>
           {content}
         </div>
       </div>
