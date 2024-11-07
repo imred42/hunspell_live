@@ -11,7 +11,6 @@ const VisualKeyboard: React.FC<VisualKeyboardProps> = ({ onCharacterClick }) => 
     <div
       style={{
         display: 'flex',
-        // justifyContent: 'center',
         marginBottom: '16px',
         flexWrap: 'wrap',
         maxWidth: '100%',
@@ -20,7 +19,10 @@ const VisualKeyboard: React.FC<VisualKeyboardProps> = ({ onCharacterClick }) => 
       {characters.map((char) => (
         <button
           key={char}
-          onClick={() => onCharacterClick(char)}
+          onMouseDown={(e) => {
+            e.preventDefault(); // Prevents the button from taking focus
+            onCharacterClick(char);
+          }}
           style={{
             margin: '0 4px',
             padding: '8px 12px',
@@ -29,6 +31,14 @@ const VisualKeyboard: React.FC<VisualKeyboardProps> = ({ onCharacterClick }) => 
             borderRadius: '4px',
             cursor: 'pointer',
             marginBottom: '8px',
+            backgroundColor: '#f9f9f9', // Optional: Enhance button appearance
+            transition: 'background-color 0.2s',
+          }}
+          onMouseOver={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#e0e0e0';
+          }}
+          onMouseOut={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#f9f9f9';
           }}
         >
           {char}
@@ -38,4 +48,4 @@ const VisualKeyboard: React.FC<VisualKeyboardProps> = ({ onCharacterClick }) => 
   );
 };
 
-export default VisualKeyboard; 
+export default VisualKeyboard;

@@ -47,6 +47,7 @@ const HomePage: React.FC = () => {
     end: number;
   } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<Editor>(null);
 
   const options: LanguageOption[] = [
     { label: "English", value: "en" },
@@ -72,6 +73,9 @@ const HomePage: React.FC = () => {
     const text = editorState.getCurrentContent().getPlainText();
     const words = text.split(/\s+/).filter((word) => word.length > 0);
     const results: SpellingResult[] = [];
+
+    // Store the current selection state
+    const currentSelection = editorState.getSelection();
 
     try {
       for (let i = 0; i < words.length; i++) {
@@ -101,7 +105,8 @@ const HomePage: React.FC = () => {
       }
 
       setSpellingResults(results);
-      updateEditorWithSpellingResults(results);
+      // Pass the current selection to maintain cursor position
+      updateEditorWithSpellingResults(results, currentSelection);
     } catch (error) {
       console.error("Error checking spelling:", error);
     }
@@ -193,7 +198,10 @@ const HomePage: React.FC = () => {
     updateEditorWithSpellingResults(updatedResults);
   };
 
-  const updateEditorWithSpellingResults = (results: SpellingResult[]) => {
+  const updateEditorWithSpellingResults = (
+    results: SpellingResult[],
+    selection?: SelectionState
+  ) => {
     const decorator = new CompositeDecorator([
       {
         strategy: (contentBlock, callback) => {
@@ -228,7 +236,13 @@ const HomePage: React.FC = () => {
       },
     ]);
 
-    const newEditorState = EditorState.set(editorState, { decorator });
+    let newEditorState = EditorState.set(editorState, { decorator });
+    
+    // Restore the selection if provided
+    if (selection) {
+      newEditorState = EditorState.forceSelection(newEditorState, selection);
+    }
+    
     setEditorState(newEditorState);
   };
 
@@ -256,6 +270,12 @@ const HomePage: React.FC = () => {
     };
   }, []);
 
+  const focusEditor = () => {
+    if (editorRef.current) {
+      editorRef.current.focus();
+    }
+  };
+
   return (
     <div
       ref={containerRef}
@@ -265,6 +285,7 @@ const HomePage: React.FC = () => {
         width: "900px",
         padding: "48px 0",
       }}
+      onClick={focusEditor}
     >
       <div style={{ maxWidth: "800px", margin: "0 auto", padding: "0 16px" }}>
         <h1
@@ -302,8 +323,8 @@ const HomePage: React.FC = () => {
               minHeight: "300px",
             }}
           >
-            
             <Editor
+              ref={editorRef}
               editorState={editorState}
               onChange={handleTextChange}
               placeholder="Enter or paste your text here to check spelling"
@@ -334,11 +355,17 @@ const HomePage: React.FC = () => {
         content={
           <div>
             {currentSuggestions ? (
-              <WordCards
-                suggestions={currentSuggestions.suggestions}
-                language={currentSuggestions.language}
-                onWordClick={replaceWord}
-              />
+              currentSuggestions.suggestions.length > 0 ? (
+                <WordCards
+                  suggestions={currentSuggestions.suggestions}
+                  language={currentSuggestions.language}
+                  onWordClick={replaceWord}
+                />
+              ) : (
+                <p className="text-center text-white text-sm">
+                  No suggestions available
+                </p>
+              )
             ) : (
               <p className="text-center text-white text-sm">
                 Loading suggestions...
