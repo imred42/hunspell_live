@@ -6,7 +6,7 @@ from .services.spell_checker_service import spell_checker_service
 class SpellCheckerView(APIView):
     def post(self, request):
         words = request.data.get('words')
-        language = request.data.get('language', 'en')
+        language = request.data.get('language', 'en_US')
         
         if not words or not isinstance(words, list):
             return Response(
@@ -34,7 +34,7 @@ class SpellCheckerView(APIView):
 class SpellCorrectionView(APIView):
     def post(self, request):
         words = request.data.get('words')
-        language = request.data.get('language', 'en')
+        language = request.data.get('language', 'en_US')
         
         if not words or not isinstance(words, list):
             return Response(
