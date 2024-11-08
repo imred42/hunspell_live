@@ -17,8 +17,8 @@ import VisualKeyboard from "./VisualKeyboard";
 
 // Types for the main component
 interface SpellingSuggestion {
-  suggestions: string[];
-  language: string;
+  suggestions: string[];  // Array of suggested corrections
+  language: string;      // Language code (e.g., 'en', 'es')
 }
 
 interface SpellingResult {
@@ -145,7 +145,7 @@ const HomePage: React.FC = () => {
     setCurrentSuggestions(null);
 
     try {
-      const response = await apiRequest("/api/correct-spelling/", {
+      const response = await apiRequest("/api/suggest-corrections/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -160,10 +160,22 @@ const HomePage: React.FC = () => {
         throw new Error("Failed to get suggestions");
       }
 
-      const result: SpellingSuggestion = await response.json();
-      setCurrentSuggestions(result);
+      const result = await response.json();
+      console.log('API Response:', result); // Debug log
+
+      const suggestions = result.suggestions[word] || [];
+      console.log('Processed suggestions:', suggestions); // Debug log
+
+      setCurrentSuggestions({
+        suggestions: suggestions,
+        language: result.language
+      });
     } catch (error) {
       console.error("Error getting suggestions:", error);
+      setCurrentSuggestions({
+        suggestions: [],
+        language: selectedOption.value
+      });
     }
   };
 
@@ -398,21 +410,19 @@ const HomePage: React.FC = () => {
         parentRef={containerRef}
         content={
           <div>
-            {currentSuggestions ? (
-              currentSuggestions.suggestions.length > 0 ? (
-                <WordCards
-                  suggestions={currentSuggestions.suggestions}
-                  language={currentSuggestions.language}
-                  onWordClick={replaceWord}
-                />
-              ) : (
-                <p className="text-center text-white text-sm">
-                  No suggestions available
-                </p>
-              )
-            ) : (
-              <p className="text-center text-white text-sm">
+            {currentSuggestions === null ? (
+              <p style={{ textAlign: "center", color: "white", fontSize: "14px" }}>
                 Loading suggestions...
+              </p>
+            ) : currentSuggestions.suggestions.length > 0 ? (
+              <WordCards
+                suggestions={currentSuggestions.suggestions}
+                language={currentSuggestions.language}
+                onWordClick={replaceWord}
+              />
+            ) : (
+              <p style={{ textAlign: "center", color: "white", fontSize: "14px" }}>
+                No suggestions available
               </p>
             )}
           </div>

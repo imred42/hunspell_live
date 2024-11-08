@@ -46,7 +46,7 @@ class SpellCorrectionView(APIView):
         suggestions = {}
         for word in words:
             word_suggestions = spell_checker.get_suggestions(word)
-            suggestions[word] = word_suggestions
+            suggestions[word] = word_suggestions[:5] if word_suggestions else []
         
         return Response(
             {

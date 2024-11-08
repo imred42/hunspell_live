@@ -6,22 +6,32 @@ interface WordCardsProps {
   onWordClick: (word: string) => void;
 }
 
-const WordCards: React.FC<WordCardsProps> = ({
-  suggestions,
-  language,
-  onWordClick
-}) => {
+const WordCards: React.FC<WordCardsProps> = ({ suggestions, language, onWordClick }) => {
   return (
     <div className="flex flex-wrap gap-2">
       {suggestions.map((word, index) => (
-        <div
-          key={`${word}-${index}`}
-          className="px-3 py-1.5 rounded-lg shadow-sm flex items-center justify-center hover:opacity-80 transition-opacity cursor-pointer"
-          style={{ backgroundColor: '#2d2d2d' }}
+        <button
+          key={index}
           onClick={() => onWordClick(word)}
+          style={{
+            padding: "4px 8px",
+            backgroundColor: "#2d2d2d",
+            border: "1px solid #404040",
+            borderRadius: "4px",
+            color: "white",
+            cursor: "pointer",
+            fontSize: "0.9rem",
+            transition: "background-color 0.2s",
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.backgroundColor = "#404040";
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.backgroundColor = "#2d2d2d";
+          }}
         >
-          <span className="text-white text-sm font-medium">{word}</span>
-        </div>
+          {word}
+        </button>
       ))}
     </div>
   );

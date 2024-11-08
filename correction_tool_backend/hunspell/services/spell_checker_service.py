@@ -20,8 +20,13 @@ class SpellCheckerService:
         return spell_checker.check_text(word)
 
     def get_suggestions(self, word, language='en'):
-        spell_checker = self.get_spell_checker(language)
-        return spell_checker.get_suggestions(word)
+        try:
+            spell_checker = self.get_spell_checker(language)
+            suggestions = spell_checker.get_suggestions(word)
+            return suggestions if suggestions else []
+        except Exception as e:
+            print(f"Error getting suggestions for word '{word}': {str(e)}")
+            return []
 
 spell_checker_service = SpellCheckerService()
 
