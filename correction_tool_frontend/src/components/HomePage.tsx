@@ -283,6 +283,19 @@ const HomePage: React.FC = () => {
     }
   };
 
+  const languageSpecialCharacters: { [key: string]: string[] } = {
+    en: [], // English has no special characters
+    es: ['á', 'é', 'í', 'ó', 'ú', 'ñ', 'ü'],
+    fr: ['à', 'â', 'ç', 'é', 'è', 'ê', 'ë', 'î', 'ï', 'ô', 'ù', 'û', 'ü', 'ÿ'],
+    de: ['ä', 'ö', 'ü', 'ß'],
+    it: ['à', 'è', 'é', 'ì', 'î', 'ò', 'ù'],
+    pt: ['á', 'â', 'ã', 'ç', 'é', 'ê', 'í', 'ó', 'ô', 'õ', 'ú'],
+    // Add more languages and their special characters as needed
+  };
+
+  const currentSpecialCharacters =
+    languageSpecialCharacters[selectedOption.value] || [];
+
   return (
     <div
       ref={containerRef}
@@ -304,7 +317,7 @@ const HomePage: React.FC = () => {
             marginBottom: "32px",
           }}
         >
-          Spell Checker Tool
+          Spell Checking Tool
         </h1>
 
         <div
@@ -319,7 +332,10 @@ const HomePage: React.FC = () => {
             value={selectedOption}
             onChange={handleSelectChange}
           />
-          <VisualKeyboard onCharacterClick={handleCharacterInsert} />
+          <VisualKeyboard
+            onCharacterClick={handleCharacterInsert}
+            characters={currentSpecialCharacters}
+          />
           <div
             style={{
               border: "1px solid #008fee",

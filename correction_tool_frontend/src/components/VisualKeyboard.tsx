@@ -2,11 +2,10 @@ import React from 'react';
 
 interface VisualKeyboardProps {
   onCharacterClick: (character: string) => void;
+  characters: string[];
 }
 
-const VisualKeyboard: React.FC<VisualKeyboardProps> = ({ onCharacterClick }) => {
-  const characters = ['á', 'é', 'í', 'ó', 'ú', 'ñ', 'ü', 'ç', 'ß', 'ø', 'å', 'œ', 'æ', 'ê', 'ô', 'û', 'à', 'è', 'ì', 'ò', 'ù'];
-
+const VisualKeyboard: React.FC<VisualKeyboardProps> = ({ onCharacterClick, characters }) => {
   return (
     <div
       style={{
@@ -16,7 +15,7 @@ const VisualKeyboard: React.FC<VisualKeyboardProps> = ({ onCharacterClick }) => 
         maxWidth: '100%',
       }}
     >
-      {characters.map((char) => (
+      {characters.length > 0 && characters.map((char) => (
         <button
           key={char}
           onMouseDown={(e) => {
