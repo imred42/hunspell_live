@@ -15,16 +15,16 @@ const WordCards: React.FC<WordCardsProps> = ({ suggestions, language, onWordClic
           onClick={() => onWordClick(word)}
           style={{
             padding: "4px 8px",
-            backgroundColor: "#2d2d2d",
-            border: "1px solid #404040",
+            backgroundColor: "#000000",
+            // border: "1px solid #404040",
             borderRadius: "4px",
             color: "white",
             cursor: "pointer",
-            fontSize: "0.9rem",
+            fontSize: "1.1rem",
             transition: "background-color 0.2s",
           }}
           onMouseOver={(e) => {
-            e.currentTarget.style.backgroundColor = "#404040";
+            e.currentTarget.style.backgroundColor = "#c56363";
           }}
           onMouseOut={(e) => {
             e.currentTarget.style.backgroundColor = "#2d2d2d";

@@ -73,10 +73,18 @@ const HomePage: React.FC = () => {
     { label: "Português", value: "pt" },
   ];
 
-  const handleSelectChange = (option: LanguageOption) => {
+  const handleSelectChange = async (option: LanguageOption) => {
     setSelectedOption(option);
     setSpellingResults([]);
-    setEditorState(EditorState.createEmpty());
+    setIsWindowOpen(false);
+    
+    // Create a new empty editor state with an empty decorator
+    const newEditorState = EditorState.set(
+      EditorState.createEmpty(),
+      { decorator: new CompositeDecorator([]) }
+    );
+    
+    setEditorState(newEditorState);
   };
 
   const handleTextChange = (newEditorState: EditorState) => {
@@ -100,6 +108,10 @@ const HomePage: React.FC = () => {
       toast.warning('Please enter some text to check spelling');
       return;
     }
+
+    // Add debug logging
+    console.log('Checking spelling with language:', selectedOption.value);
+    console.log('Full locale:', LANGUAGE_CODE_MAP[selectedOption.value]);
 
     const wordRegex = /[\p{L}\p{M}]+/gu;
     let match;
@@ -154,7 +166,7 @@ const HomePage: React.FC = () => {
       updateEditorWithSpellingResults(newSpellingResults);
       
       if (newSpellingResults.length > 0) {
-        toast.info(`Found ${newSpellingResults.length} spelling error${newSpellingResults.length === 1 ? '' : 's'}`);
+        toast.error(`Found ${newSpellingResults.length} spelling error${newSpellingResults.length === 1 ? '' : 's'}`);
       } else {
         toast.success('No spelling errors found!');
       }
@@ -183,6 +195,10 @@ const HomePage: React.FC = () => {
     setCurrentSuggestions(null);
 
     try {
+      // Add debug logging
+      console.log('Getting suggestions with language:', selectedOption.value);
+      console.log('Full locale:', LANGUAGE_CODE_MAP[selectedOption.value]);
+
       const response = await apiRequest("/api/get-list/", {
         method: "POST",
         headers: {
@@ -190,7 +206,7 @@ const HomePage: React.FC = () => {
         },
         body: JSON.stringify({
           words: [word],
-          language: LANGUAGE_CODE_MAP[selectedOption.value] || 'en_US', // Convert short code to full locale
+          language: LANGUAGE_CODE_MAP[selectedOption.value] || 'en_US',
         }),
       });
 
@@ -210,6 +226,7 @@ const HomePage: React.FC = () => {
       });
     } catch (error) {
       console.error("Error getting suggestions:", error);
+      toast.error('Failed to get suggestions. Please try again.');
       setCurrentSuggestions({
         suggestions: [],
         language: selectedOption.value
@@ -315,9 +332,12 @@ const HomePage: React.FC = () => {
         }) => (
           <span
             style={{
-              textDecoration: "underline",
+              textDecoration: "underline dashed",
               textDecorationColor: "red",
-              cursor: "pointer",
+              cursor: "text",
+              fontStyle: "italic",
+              // fontWeight: "bold",
+              color:"red"
             }}
             onClick={(e) => handleWordClick(decoratedText, start, end, e)}
           >
@@ -346,6 +366,7 @@ const HomePage: React.FC = () => {
       "insert-characters"
     );
     setEditorState(newEditorState);
+    setIsWindowOpen(false);
   };
 
   // Disable scrolling on the entire page
@@ -477,7 +498,7 @@ const HomePage: React.FC = () => {
       />
       <ToastContainer
         position="top-center"
-        autoClose={1000}
+        autoClose={2000}
         hideProgressBar={false}
         newestOnTop={false}
         closeOnClick
