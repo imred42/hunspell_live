@@ -14,6 +14,9 @@ import DraggableWindow from "./DraggableWindow";
 import WordCards from "./WordCards";
 import { apiRequest } from "../utils/config";
 import VisualKeyboard from "./VisualKeyboard";
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { ToastContainer } from 'react-toastify';
 
 // Types for the main component
 interface SpellingSuggestion {
@@ -74,6 +77,12 @@ const HomePage: React.FC = () => {
   const handleCheckSpelling = async () => {
     const contentState = editorState.getCurrentContent();
     const text = contentState.getPlainText();
+    
+    if (!text.trim()) {
+      toast.warning('Please enter some text to check spelling');
+      return;
+    }
+
     const wordRegex = /\b\w+\b/g;
     let match;
     const wordsWithIndices: { word: string; index: number }[] = [];
@@ -121,8 +130,15 @@ const HomePage: React.FC = () => {
 
       setSpellingResults(newSpellingResults);
       updateEditorWithSpellingResults(newSpellingResults);
+      
+      if (newSpellingResults.length > 0) {
+        toast.info(`Found ${newSpellingResults.length} spelling error${newSpellingResults.length === 1 ? '' : 's'}`);
+      } else {
+        toast.success('No spelling errors found!');
+      }
     } catch (error) {
       console.error("Error checking spelling:", error);
+      toast.error('Failed to check spelling. Please try again.');
     }
   };
 
@@ -427,6 +443,17 @@ const HomePage: React.FC = () => {
             )}
           </div>
         }
+      />
+      <ToastContainer
+        position="top-center"
+        autoClose={1000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
       />
     </div>
   );
