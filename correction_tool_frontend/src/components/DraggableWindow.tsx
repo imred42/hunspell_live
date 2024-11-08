@@ -25,10 +25,11 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({
       const windowWidth = 300; // Width of the draggable window
       const windowHeight = 300; // Height of the draggable window
       const margin = 20; // Margin between the cursor and the window
+      const verticalOffset = 20; // Additional offset to adjust the window lower
 
       // Calculate x and y positions relative to the parent container
       let xPos = initialPosition.x - parentRect.left - windowWidth / 2;
-      let yPos = initialPosition.y - parentRect.top + margin;
+      let yPos = initialPosition.y - parentRect.top + margin + verticalOffset; // Added verticalOffset here
 
       // Ensure the window doesn't overflow to the left
       if (xPos < margin) {
@@ -43,7 +44,7 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({
       // Ensure the window doesn't overflow to the bottom
       if (yPos + windowHeight > parentRect.height - margin) {
         // Position above the cursor if there's not enough space below
-        yPos = initialPosition.y - parentRect.top - windowHeight - margin;
+        yPos = initialPosition.y - parentRect.top - windowHeight - margin - verticalOffset; // Adjusted with verticalOffset
         // Ensure it doesn't overflow the top
         if (yPos < margin) {
           yPos = margin;

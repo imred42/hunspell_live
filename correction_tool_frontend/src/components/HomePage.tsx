@@ -80,8 +80,16 @@ const HomePage: React.FC = () => {
   };
 
   const handleTextChange = (newEditorState: EditorState) => {
+    const oldContent = editorState.getCurrentContent();
+    const newContent = newEditorState.getCurrentContent();
+
+    // Check if the content has actually changed
+    if (oldContent !== newContent) {
+      setIsWindowOpen(false);
+      setSpellingResults([]);
+    }
+
     setEditorState(newEditorState);
-    setSpellingResults([]);
   };
 
   const handleCheckSpelling = async () => {
