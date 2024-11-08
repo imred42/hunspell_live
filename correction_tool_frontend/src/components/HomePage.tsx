@@ -35,6 +35,16 @@ interface LanguageOption {
   value: string;
 }
 
+// Add this mapping at the top of the file, after the interfaces
+const LANGUAGE_CODE_MAP: { [key: string]: string } = {
+  'en': 'en_US',
+  'es': 'es_ES',
+  'fr': 'fr_FR',
+  'de': 'de_DE',
+  'it': 'it_IT',
+  'pt': 'pt_PT'
+};
+
 const HomePage: React.FC = () => {
   const [selectedOption, setSelectedOption] = useState<LanguageOption>({
     label: "English",
@@ -83,28 +93,31 @@ const HomePage: React.FC = () => {
       return;
     }
 
-    const wordRegex = /\b\w+\b/g;
+    const wordRegex = /[\p{L}\p{M}]+/gu;
     let match;
     const wordsWithIndices: { word: string; index: number }[] = [];
 
     while ((match = wordRegex.exec(text)) !== null) {
-      wordsWithIndices.push({ word: match[0], index: match.index });
+      wordsWithIndices.push({ 
+        word: match[0],
+        index: match.index 
+      });
     }
 
     const uniqueWords = Array.from(
-      new Set(wordsWithIndices.map((item) => item.word.toLowerCase()))
+      new Set(wordsWithIndices.map((item) => item.word))
     );
 
     try {
       const response = await apiRequest("/api/check/", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/json; charset=utf-8"
         },
         body: JSON.stringify({
           words: uniqueWords,
-          language: selectedOption.value,
-        }),
+          language: LANGUAGE_CODE_MAP[selectedOption.value] || 'en_US', // Convert short code to full locale
+        })
       });
 
       if (!response.ok) {
@@ -114,12 +127,13 @@ const HomePage: React.FC = () => {
       const result = await response.json();
       const incorrectWords = result.results
         .filter((res: { word: string; is_correct: boolean }) => !res.is_correct)
-        .map((res: { word: string; is_correct: boolean }) => res.word.toLowerCase());
+        .map((res: { word: string; is_correct: boolean }) => res.word);
 
       const newSpellingResults: SpellingResult[] = [];
 
       wordsWithIndices.forEach(({ word, index }) => {
-        if (incorrectWords.includes(word.toLowerCase())) {
+        if (incorrectWords.some(incorrect => 
+          incorrect.localeCompare(word, selectedOption.value, { sensitivity: 'base' }) === 0)) {
           newSpellingResults.push({
             index,
             word,
@@ -168,7 +182,7 @@ const HomePage: React.FC = () => {
         },
         body: JSON.stringify({
           words: [word],
-          language: selectedOption.value,
+          language: LANGUAGE_CODE_MAP[selectedOption.value] || 'en_US', // Convert short code to full locale
         }),
       });
 
@@ -251,7 +265,6 @@ const HomePage: React.FC = () => {
     results: SpellingResult[],
     selection?: SelectionState
   ) => {
-    // Preserve the current selection
     const currentSelection = editorState.getSelection();
 
     const decorator = new CompositeDecorator([
@@ -260,12 +273,26 @@ const HomePage: React.FC = () => {
           const text = contentBlock.getText();
           results.forEach((result) => {
             let start = 0;
-            while (
-              (start = text.toLowerCase().indexOf(result.word.toLowerCase(), start)) !==
-              -1
-            ) {
-              callback(start, start + result.length);
-              start += result.length;
+            const searchWord = result.word;
+            
+            while (true) {
+              // Find the next occurrence of the word
+              const index = text.slice(start).indexOf(searchWord);
+              if (index === -1) break;
+              
+              // Calculate the absolute position
+              const absoluteStart = start + index;
+              const absoluteEnd = absoluteStart + searchWord.length;
+              
+              // Verify this is a whole word match
+              const beforeChar = absoluteStart > 0 ? text[absoluteStart - 1] : ' ';
+              const afterChar = absoluteEnd < text.length ? text[absoluteEnd] : ' ';
+              
+              if (!/\p{L}/u.test(beforeChar) && !/\p{L}/u.test(afterChar)) {
+                callback(absoluteStart, absoluteEnd);
+              }
+              
+              start = absoluteStart + 1;
             }
           });
         },
@@ -292,12 +319,8 @@ const HomePage: React.FC = () => {
       },
     ]);
 
-    // Set the new decorator while preserving the selection
     let newEditorState = EditorState.set(editorState, { decorator });
-
-    // Restore the original selection
     newEditorState = EditorState.forceSelection(newEditorState, currentSelection);
-
     setEditorState(newEditorState);
   };
 
