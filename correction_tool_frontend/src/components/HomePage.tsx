@@ -87,7 +87,7 @@ const HomePage: React.FC = () => {
     );
 
     try {
-      const response = await apiRequest("/api/check-spelling/", {
+      const response = await apiRequest("/api/check/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -145,7 +145,7 @@ const HomePage: React.FC = () => {
     setCurrentSuggestions(null);
 
     try {
-      const response = await apiRequest("/api/suggest-corrections/", {
+      const response = await apiRequest("/api/get-list/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
