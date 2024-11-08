@@ -5,6 +5,8 @@ import {
   CompositeDecorator,
   Modifier,
   SelectionState,
+  ContentBlock,
+  ContentState,
 } from "draft-js";
 import "draft-js/dist/Draft.css";
 import CustomDropdown from "./CustomDropdown";
@@ -70,43 +72,55 @@ const HomePage: React.FC = () => {
   };
 
   const handleCheckSpelling = async () => {
-    const text = editorState.getCurrentContent().getPlainText();
-    const words = text.split(/\s+/).filter((word) => word.length > 0);
-    const results: SpellingResult[] = [];
+    const contentState = editorState.getCurrentContent();
+    const text = contentState.getPlainText();
+    const wordRegex = /\b\w+\b/g;
+    let match;
+    const wordsWithIndices: { word: string; index: number }[] = [];
 
-    // Store the current selection state
-    const currentSelection = editorState.getSelection();
+    while ((match = wordRegex.exec(text)) !== null) {
+      wordsWithIndices.push({ word: match[0], index: match.index });
+    }
+
+    const uniqueWords = Array.from(
+      new Set(wordsWithIndices.map((item) => item.word.toLowerCase()))
+    );
 
     try {
-      for (let i = 0; i < words.length; i++) {
-        const response = await apiRequest("/api/check-spelling/", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            word: words[i],
-            language: selectedOption.value,
-          }),
-        });
+      const response = await apiRequest("/api/check-spelling/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          words: uniqueWords,
+          language: selectedOption.value,
+        }),
+      });
 
-        if (!response.ok) {
-          throw new Error("Failed to check spelling");
-        }
-
-        const result = await response.json();
-        if (!result.is_correct) {
-          results.push({
-            index: text.indexOf(words[i]),
-            word: words[i],
-            length: words[i].length,
-          });
-        }
+      if (!response.ok) {
+        throw new Error("Failed to check spelling");
       }
 
-      setSpellingResults(results);
-      // Pass the current selection to maintain cursor position
-      updateEditorWithSpellingResults(results, currentSelection);
+      const result = await response.json();
+      const incorrectWords = result.results
+        .filter((res: { word: string; is_correct: boolean }) => !res.is_correct)
+        .map((res: { word: string; is_correct: boolean }) => res.word.toLowerCase());
+
+      const newSpellingResults: SpellingResult[] = [];
+
+      wordsWithIndices.forEach(({ word, index }) => {
+        if (incorrectWords.includes(word.toLowerCase())) {
+          newSpellingResults.push({
+            index,
+            word,
+            length: word.length,
+          });
+        }
+      });
+
+      setSpellingResults(newSpellingResults);
+      updateEditorWithSpellingResults(newSpellingResults);
     } catch (error) {
       console.error("Error checking spelling:", error);
     }
@@ -131,13 +145,13 @@ const HomePage: React.FC = () => {
     setCurrentSuggestions(null);
 
     try {
-      const response = await apiRequest("/api/suggest-corrections/", {
+      const response = await apiRequest("/api/correct-spelling/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          word: word,
+          words: [word],
           language: selectedOption.value,
         }),
       });
@@ -160,7 +174,7 @@ const HomePage: React.FC = () => {
     const contentState = editorState.getCurrentContent();
     const blockMap = contentState.getBlockMap();
 
-    let targetBlock = null;
+    let targetBlock: ContentBlock | null = null;
     let blockStart = 0;
 
     blockMap.forEach((block) => {
@@ -199,7 +213,7 @@ const HomePage: React.FC = () => {
     // Remove the replaced word from spelling results
     const updatedResults = spellingResults.filter(
       (result) =>
-        result.index !== start || result.word !== selectedWordInfo.word
+        !(result.index === start && result.word === selectedWordInfo.word)
     );
     setSpellingResults(updatedResults);
     updateEditorWithSpellingResults(updatedResults);
@@ -209,14 +223,21 @@ const HomePage: React.FC = () => {
     results: SpellingResult[],
     selection?: SelectionState
   ) => {
+    // Preserve the current selection
+    const currentSelection = editorState.getSelection();
+
     const decorator = new CompositeDecorator([
       {
         strategy: (contentBlock, callback) => {
+          const text = contentBlock.getText();
           results.forEach((result) => {
-            const text = contentBlock.getText();
-            const start = text.indexOf(result.word);
-            if (start >= 0) {
+            let start = 0;
+            while (
+              (start = text.toLowerCase().indexOf(result.word.toLowerCase(), start)) !==
+              -1
+            ) {
               callback(start, start + result.length);
+              start += result.length;
             }
           });
         },
@@ -243,13 +264,12 @@ const HomePage: React.FC = () => {
       },
     ]);
 
+    // Set the new decorator while preserving the selection
     let newEditorState = EditorState.set(editorState, { decorator });
-    
-    // Restore the selection if provided
-    if (selection) {
-      newEditorState = EditorState.forceSelection(newEditorState, selection);
-    }
-    
+
+    // Restore the original selection
+    newEditorState = EditorState.forceSelection(newEditorState, currentSelection);
+
     setEditorState(newEditorState);
   };
 
