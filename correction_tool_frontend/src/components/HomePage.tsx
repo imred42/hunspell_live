@@ -65,23 +65,30 @@ const HomePage: React.FC = () => {
     setText(newText);
     setSpellingResults([]);
     
-    // Reset any existing styling
-    event.currentTarget.childNodes.forEach(node => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        node.textContent = node.textContent;
-      }
-    });
-    
-    // Ensure cursor stays at the end of content
+    // Get the current selection
     const selection = window.getSelection();
     if (selection && selection.rangeCount > 0) {
       const range = selection.getRangeAt(0);
-      const lastChild = event.currentTarget.lastChild;
-      if (lastChild) {
-        range.setStartAfter(lastChild);
-        range.setEndAfter(lastChild);
-        selection.removeAllRanges();
-        selection.addRange(range);
+      
+      // If the cursor is inside or next to a decorated span, normalize the text
+      const parentSpan = range.startContainer.parentElement;
+      if (parentSpan?.classList.contains('misspelled') || 
+          (range.startContainer.previousSibling?.nodeName === 'SPAN' || 
+           range.startContainer.nextSibling?.nodeName === 'SPAN')) {
+        // Create a new text node with the entire content
+        const textNode = document.createTextNode(newText);
+        
+        // Clear the editor and insert the normalized text
+        if (editorRef.current) {
+          editorRef.current.innerHTML = '';
+          editorRef.current.appendChild(textNode);
+          
+          // Reset cursor position to the end
+          range.setStart(textNode, textNode.length);
+          range.setEnd(textNode, textNode.length);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
       }
     }
   };
@@ -201,7 +208,7 @@ const HomePage: React.FC = () => {
         suggestionElement.textContent = suggestion;
         suggestionElement.style.padding = '8px 16px';
         suggestionElement.style.cursor = 'pointer';
-        suggestionElement.style.fontSize = '18px';
+        suggestionElement.style.fontSize = '20px';
         suggestionElement.style.fontWeight = 'bold';
         suggestionElement.style.color = '#374151';
         suggestionElement.style.margin = '0';
@@ -348,12 +355,12 @@ const HomePage: React.FC = () => {
                 color: '#ef4444',
                 border: '#ef4444  1px solid',
                 borderRadius: '6px',
-                padding: '8px 10px',
+                padding: '10px 12px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                fontSize: '14px',
+                fontSize: '16px',
               }}
             >
               <FaTrashAlt />

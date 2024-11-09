@@ -4,13 +4,13 @@
 
 @layer base {
   :root {
-    font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-    line-height: 1.5;
+    font-family: 'Inter var', system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
     font-weight: 400;
 
-    color-scheme: light dark;
-    color: rgba(255, 255, 255, 0.87);
-    background-color: #242424;
+    color-scheme: light;
+    color: #1a1a1a;
+    background-color: #f8fafc;
 
     font-synthesis: none;
     text-rendering: optimizeLegibility;
@@ -88,10 +88,35 @@ a {
   overflow-wrap: break-word;
   -webkit-user-select: text;
   user-select: text;
+  background-color: white;
+  transition: all 0.2s ease;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 [contenteditable]:empty:before {
   content: attr(data-placeholder);
-  color: #888;
+  color: #9ca3af;
   font-style: italic;
+  font-size: 30px;
+}
+
+[contenteditable]:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1), 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* .misspelled {
+  text-decoration: underline wavy #ef4444 !important;
+  text-decoration-thickness: 2px !important;
+  color: #ef4444;
+  cursor: pointer;
+  font-style: normal;
+  font-size: 24px;
+  transition: all 0.2s ease;
+} */
+
+.misspelled:hover {
+  background-color: rgba(239, 68, 68, 0.1);
 }
