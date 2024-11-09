@@ -45,13 +45,24 @@ const HomePage: React.FC = () => {
   const handleSelectChange = (option: LanguageOption) => {
     localStorage.setItem('selectedLanguage', JSON.stringify(option));
     setSelectedOption(option);
-    window.location.reload();
+    setText('');
+    setSpellingResults([]);
+    if (editorRef.current) {
+      editorRef.current.innerHTML = '';
+    }
   };
 
   const handleTextChange = (event: React.FormEvent<HTMLDivElement>) => {
     const newText = event.currentTarget.innerText;
     setText(newText);
     setSpellingResults([]);
+    
+    // Reset any existing styling
+    event.currentTarget.childNodes.forEach(node => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        node.textContent = node.textContent;
+      }
+    });
     
     // Ensure cursor stays at the end of content
     const selection = window.getSelection();
@@ -102,7 +113,7 @@ const HomePage: React.FC = () => {
         class="misspelled" 
         data-word="${misspelledWord}"
         data-start="${wordStart}"
-        style="text-decoration: underline dashed red; color: red; cursor: text;"
+        style="text-decoration: underline dashed red; color: red; cursor: help; font-style: italic;"
       >${misspelledWord}</span>`;
       
       lastIndex = wordEnd;
@@ -220,24 +231,37 @@ const HomePage: React.FC = () => {
   const handleSuggestionClick = (suggestion: string, originalWord: string, startPosition: number) => {
     if (!editorRef.current) return;
 
-    const content = editorRef.current.innerHTML;
-    const regex = new RegExp(`<span[^>]*data-word="${originalWord}"[^>]*>${originalWord}</span>`);
-    const newContent = content.replace(regex, suggestion);
-    editorRef.current.innerHTML = newContent;
+    // Find all spans with the misspelled word
+    const spans = editorRef.current.querySelectorAll(`span.misspelled[data-word="${originalWord}"]`);
     
-    // Update text state
-    setText(editorRef.current.innerText);
-    
-    // Remove the replaced word from spelling results
-    setSpellingResults(prev => 
-      prev.filter(result => !(result.word === originalWord && result.index === startPosition))
-    );
+    // Find the specific span at the correct position
+    let targetSpan: Element | null = null;
+    for (const span of spans) {
+      const spanPosition = parseInt(span.getAttribute('data-start') || '0', 10);
+      if (spanPosition === startPosition) {
+        targetSpan = span;
+        break;
+      }
+    }
 
-    // Reattach click handlers to remaining misspelled words
-    const misspelledElements = editorRef.current.getElementsByClassName('misspelled');
-    Array.from(misspelledElements).forEach(element => {
-      element.addEventListener('click', handleMisspelledWordClick);
-    });
+    if (targetSpan) {
+      // Replace only the target span with the suggestion
+      targetSpan.outerHTML = suggestion;
+      
+      // Update text state
+      setText(editorRef.current.innerText);
+      
+      // Remove the replaced word from spelling results
+      setSpellingResults(prev => 
+        prev.filter(result => !(result.word === originalWord && result.index === startPosition))
+      );
+
+      // Reattach click handlers to remaining misspelled words
+      const misspelledElements = editorRef.current.getElementsByClassName('misspelled');
+      Array.from(misspelledElements).forEach(element => {
+        element.addEventListener('click', handleMisspelledWordClick);
+      });
+    }
   };
 
   const handleCharacterInsert = (character: string) => {
@@ -310,6 +334,8 @@ const HomePage: React.FC = () => {
               ...styles.editor,
               textAlign: 'left',
               caretColor: 'auto',
+              color: '#000000',
+              fontStyle: 'normal',
             }}
             data-placeholder="Enter or paste your text here to check spelling"
           />
