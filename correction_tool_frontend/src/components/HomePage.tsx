@@ -15,6 +15,7 @@ import { ToastContainer } from 'react-toastify';
 import { FaTrashAlt } from 'react-icons/fa';
 import { useSpellChecker } from '../hooks/useSpellChecker';
 import { styles } from '../styles/HomePage.styles';
+import * as HoverCard from "@radix-ui/react-hover-card";
 
 const HomePage: React.FC = () => {
   const [selectedOption, setSelectedOption] = useState<LanguageOption>(() => {
@@ -35,6 +36,7 @@ const HomePage: React.FC = () => {
 
   const { 
     checkSpelling,
+    getSuggestions,
     currentSuggestions: spellSuggestions, 
   } = useSpellChecker(selectedOption.value);
 
@@ -119,19 +121,47 @@ const HomePage: React.FC = () => {
         },
         component: ({
           children,
-        }) => (
-          <span
-            style={{
-              textDecoration: "underline dashed",
-              textDecorationColor: "red",
-              cursor: "text",
-              fontStyle: "italic",
-              color:"red"
-            }}
-          >
-            {children}
-          </span>
-        ),
+          decoratedText,
+        }) => {
+          const [suggestions, setSuggestions] = useState<string[]>([]);
+          
+          const handleHover = async () => {
+            const result = await getSuggestions(decoratedText);
+            setSuggestions(result.suggestions);
+          };
+          
+          return (
+            <HoverCard.Root onOpenChange={(open) => {
+              if (open) handleHover();
+            }}>
+              <HoverCard.Trigger asChild>
+                <span
+                  style={{
+                    textDecoration: "underline dashed",
+                    textDecorationColor: "red",
+                    cursor: "pointer",
+                    fontStyle: "italic",
+                    color: "red"
+                  }}
+                >
+                  {children}
+                </span>
+              </HoverCard.Trigger>
+              <HoverCard.Portal>
+                <HoverCard.Content className="HoverCardContent" sideOffset={5}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 7, padding: "10px" }}>
+                    {suggestions.map((suggestion, index) => (
+                      <div key={index} className="Text">
+                        {suggestion}
+                      </div>
+                    ))}
+                  </div>
+                  <HoverCard.Arrow className="HoverCardArrow" />
+                </HoverCard.Content>
+              </HoverCard.Portal>
+            </HoverCard.Root>
+          );
+        },
       },
     ]);
 
