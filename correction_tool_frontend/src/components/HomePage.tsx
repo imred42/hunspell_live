@@ -9,6 +9,7 @@ import { useSpellChecker } from '../hooks/useSpellChecker';
 import { styles } from '../styles/HomePage.styles';
 import * as HoverCard from "@radix-ui/react-hover-card";
 import { LanguageOption, SpellingResult } from '../types/spelling';
+import { SPECIAL_CHARACTERS } from '../constants/language';
 
 const HomePage: React.FC = () => {
   const [selectedOption, setSelectedOption] = useState<LanguageOption>(() => {
@@ -45,18 +46,6 @@ const HomePage: React.FC = () => {
     localStorage.setItem('selectedLanguage', JSON.stringify(option));
     setSelectedOption(option);
     window.location.reload();
-  };
-
-  const handleClear = () => {
-    const currentLanguage = localStorage.getItem('selectedLanguage');
-    if (editorRef.current) {
-      editorRef.current.innerHTML = '';
-      setText('');
-      setSpellingResults([]);
-    }
-    if (currentLanguage) {
-      localStorage.setItem('selectedLanguage', currentLanguage);
-    }
   };
 
   const handleTextChange = (event: React.FormEvent<HTMLDivElement>) => {
@@ -113,7 +102,7 @@ const HomePage: React.FC = () => {
         class="misspelled" 
         data-word="${misspelledWord}"
         data-start="${wordStart}"
-        style="text-decoration: underline dashed red; color: red; cursor: pointer;"
+        style="text-decoration: underline dashed red; color: red; cursor: text;"
       >${misspelledWord}</span>`;
       
       lastIndex = wordEnd;
@@ -121,6 +110,13 @@ const HomePage: React.FC = () => {
 
     // Add any remaining text
     html += textContent.slice(lastIndex);
+    
+    // Save current cursor position
+    const selection = window.getSelection();
+    const range = selection?.getRangeAt(0);
+    const cursorOffset = range?.endOffset || 0;
+    
+    // Update content
     editorRef.current.innerHTML = html;
     setSpellingResults(results);
 
@@ -129,6 +125,18 @@ const HomePage: React.FC = () => {
     Array.from(misspelledElements).forEach(element => {
       element.addEventListener('click', handleMisspelledWordClick);
     });
+
+    // Restore cursor position at the end of the content
+    if (editorRef.current) {
+      const newRange = document.createRange();
+      const lastChild = editorRef.current.lastChild;
+      if (lastChild) {
+        newRange.setStartAfter(lastChild);
+        newRange.setEndAfter(lastChild);
+        selection?.removeAllRanges();
+        selection?.addRange(newRange);
+      }
+    }
   };
 
   const handleMisspelledWordClick = async (event: Event) => {
@@ -142,33 +150,58 @@ const HomePage: React.FC = () => {
     
     // Create and show suggestions popup
     const popup = document.createElement('div');
-    popup.style.position = 'absolute';
-    popup.style.left = `${element.offsetLeft}px`;
-    popup.style.top = `${element.offsetTop + element.offsetHeight}px`;
-    popup.style.backgroundColor = 'white';
-    popup.style.border = '1px solid #ccc';
-    popup.style.borderRadius = '4px';
-    popup.style.padding = '8px';
-    popup.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+    
+    // Calculate position relative to the clicked word
+    const rect = element.getBoundingClientRect();
+    popup.style.position = 'fixed';
+    popup.style.left = `${rect.left}px`;
+    popup.style.top = `${rect.bottom + 8}px`;
+    popup.style.backgroundColor = '#ffffff';
+    popup.style.border = '2px solid #e2e8f0';
+    popup.style.borderRadius = '12px';
+    popup.style.padding = '12px 0';
+    popup.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
     popup.style.zIndex = '1000';
+    popup.style.maxHeight = '300px';
+    popup.style.overflowY = 'auto';
+    popup.style.minWidth = `${Math.max(rect.width, 150)}px`;
 
-    suggestions.suggestions.forEach(suggestion => {
-      const suggestionElement = document.createElement('div');
-      suggestionElement.textContent = suggestion;
-      suggestionElement.style.padding = '4px 8px';
-      suggestionElement.style.cursor = 'pointer';
-      suggestionElement.addEventListener('mouseover', () => {
-        suggestionElement.style.backgroundColor = '#f0f0f0';
+    if (suggestions.suggestions.length === 0) {
+      // Add message for no suggestions
+      const noSuggestionsElement = document.createElement('div');
+      noSuggestionsElement.textContent = 'No suggestions available';
+      noSuggestionsElement.style.padding = '8px 16px';
+      noSuggestionsElement.style.fontSize = '18px';
+      noSuggestionsElement.style.fontWeight = 'bold';
+      noSuggestionsElement.style.color = '#6b7280';
+      noSuggestionsElement.style.fontStyle = 'italic';
+      popup.appendChild(noSuggestionsElement);
+    } else {
+      suggestions.suggestions.forEach(suggestion => {
+        const suggestionElement = document.createElement('div');
+        suggestionElement.textContent = suggestion;
+        suggestionElement.style.padding = '8px 16px';
+        suggestionElement.style.cursor = 'pointer';
+        suggestionElement.style.fontSize = '18px';
+        suggestionElement.style.fontWeight = 'bold';
+        suggestionElement.style.color = '#374151';
+        suggestionElement.style.margin = '0';
+        
+        suggestionElement.addEventListener('mouseover', () => {
+          suggestionElement.style.backgroundColor = '#f3f4f6';
+          suggestionElement.style.color = '#000000';
+        });
+        suggestionElement.addEventListener('mouseout', () => {
+          suggestionElement.style.backgroundColor = 'transparent';
+          suggestionElement.style.color = '#374151';
+        });
+        suggestionElement.addEventListener('click', () => {
+          handleSuggestionClick(suggestion, word, startPosition);
+          document.body.removeChild(popup);
+        });
+        popup.appendChild(suggestionElement);
       });
-      suggestionElement.addEventListener('mouseout', () => {
-        suggestionElement.style.backgroundColor = 'transparent';
-      });
-      suggestionElement.addEventListener('click', () => {
-        handleSuggestionClick(suggestion, word, startPosition);
-        document.body.removeChild(popup);
-      });
-      popup.appendChild(suggestionElement);
-    });
+    }
 
     document.body.appendChild(popup);
 
@@ -199,6 +232,12 @@ const HomePage: React.FC = () => {
     setSpellingResults(prev => 
       prev.filter(result => !(result.word === originalWord && result.index === startPosition))
     );
+
+    // Reattach click handlers to remaining misspelled words
+    const misspelledElements = editorRef.current.getElementsByClassName('misspelled');
+    Array.from(misspelledElements).forEach(element => {
+      element.addEventListener('click', handleMisspelledWordClick);
+    });
   };
 
   const handleCharacterInsert = (character: string) => {
@@ -236,9 +275,7 @@ const HomePage: React.FC = () => {
     }
   };
 
-  const currentSpecialCharacters = options.find(
-    option => option.value === selectedOption.value
-  )?.specialCharacters || [];
+  const currentSpecialCharacters = SPECIAL_CHARACTERS[selectedOption.value] || [];
 
   return (
     <div
@@ -261,27 +298,6 @@ const HomePage: React.FC = () => {
             value={selectedOption}
             onChange={handleSelectChange}
           />
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'flex-start',
-            marginTop: '16px',
-            marginBottom: '16px'
-          }}>
-            <button
-              onClick={handleClear}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "#dc3545";
-                e.currentTarget.style.color = "white";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "white";
-                e.currentTarget.style.color = "#dc3545";
-              }}
-              style={styles.clearButton}
-            >
-              <FaTrashAlt size={12} />
-            </button>
-          </div>
           <VisualKeyboard
             onCharacterClick={handleCharacterInsert}
             characters={currentSpecialCharacters}
@@ -295,7 +311,7 @@ const HomePage: React.FC = () => {
               textAlign: 'left',
               caretColor: 'auto',
             }}
-            placeholder="Enter or paste your text here to check spelling"
+            data-placeholder="Enter or paste your text here to check spelling"
           />
           <button
             onClick={handleCheckSpelling}
