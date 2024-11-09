@@ -12,12 +12,12 @@ import "draft-js/dist/Draft.css";
 import CustomDropdown from "./CustomDropdown";
 import DraggableWindow from "./DraggableWindow";
 import WordCards from "./WordCards";
-import { apiRequest } from "../utils/config";
 import VisualKeyboard from "./VisualKeyboard";
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer } from 'react-toastify';
 import { FaTrashAlt } from 'react-icons/fa';
+import { useSpellChecker } from '../hooks/useSpellChecker';
 
 // Types for the main component
 interface SpellingSuggestion {
@@ -87,6 +87,13 @@ const HomePage: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<Editor>(null);
 
+  const { 
+    spellingResults: spellResults, 
+    currentSuggestions: spellSuggestions, 
+    checkSpelling, 
+    getSuggestions 
+  } = useSpellChecker(selectedOption.value);
+
   const options: LanguageOption[] = [
     { label: "English", value: "en" },
     { label: "Español", value: "es" },
@@ -127,75 +134,12 @@ const HomePage: React.FC = () => {
     const contentState = editorState.getCurrentContent();
     const text = contentState.getPlainText();
     
-    if (!text.trim()) {
-      toast.warning('Please enter some text to check spelling');
-      return;
-    }
-
-    // Add debug logging
-    console.log('Checking spelling with language:', selectedOption.value);
-    console.log('Full locale:', LANGUAGE_CODE_MAP[selectedOption.value]);
-
-    const wordRegex = /[\p{L}\p{M}]+/gu;
-    let match;
-    const wordsWithIndices: { word: string; index: number }[] = [];
-
-    while ((match = wordRegex.exec(text)) !== null) {
-      wordsWithIndices.push({ 
-        word: match[0],
-        index: match.index 
-      });
-    }
-
-    const uniqueWords = Array.from(
-      new Set(wordsWithIndices.map((item) => item.word))
-    );
-
-    try {
-      const response = await apiRequest("/api/check/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json; charset=utf-8"
-        },
-        body: JSON.stringify({
-          words: uniqueWords,
-          language: LANGUAGE_CODE_MAP[selectedOption.value] || 'en_US', // Convert short code to full locale
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to check spelling");
-      }
-
-      const result = await response.json();
-      const incorrectWords = result.results
-        .filter((res: { word: string; is_correct: boolean }) => !res.is_correct)
-        .map((res: { word: string; is_correct: boolean }) => res.word);
-
-      const newSpellingResults: SpellingResult[] = [];
-
-      wordsWithIndices.forEach(({ word, index }) => {
-        if (incorrectWords.some(incorrect => 
-          incorrect.localeCompare(word, selectedOption.value, { sensitivity: 'base' }) === 0)) {
-          newSpellingResults.push({
-            index,
-            word,
-            length: word.length,
-          });
-        }
-      });
-
-      setSpellingResults(newSpellingResults);
-      updateEditorWithSpellingResults(newSpellingResults);
-      
-      if (newSpellingResults.length > 0) {
-        toast.error(`Found ${newSpellingResults.length} spelling error${newSpellingResults.length === 1 ? '' : 's'}`);
-      } else {
-        toast.success('No spelling errors found!');
-      }
-    } catch (error) {
-      console.error("Error checking spelling:", error);
-      toast.error('Failed to check spelling. Please try again.');
+    const newResults = await checkSpelling(text);
+    if (newResults.length > 0) {
+      updateEditorWithSpellingResults(newResults);
+      toast.error(`Found ${newResults.length} spelling error${newResults.length === 1 ? '' : 's'}`);
+    } else {
+      toast.success('No spelling errors found!');
     }
   };
 
@@ -205,108 +149,15 @@ const HomePage: React.FC = () => {
     end: number,
     event: React.MouseEvent
   ) => {
-    // Calculate position based on mouse cursor
     const mouseX = event.clientX;
     const mouseY = event.clientY;
     
     setSelectedWordInfo({ word, start, end });
-    setWindowPosition({ 
-      x: mouseX, 
-      y: mouseY 
-    });
+    setWindowPosition({ x: mouseX, y: mouseY });
     setIsWindowOpen(true);
     setCurrentSuggestions(null);
 
-    try {
-      // Add debug logging
-      console.log('Getting suggestions with language:', selectedOption.value);
-      console.log('Full locale:', LANGUAGE_CODE_MAP[selectedOption.value]);
-
-      const response = await apiRequest("/api/get-list/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          words: [word],
-          language: LANGUAGE_CODE_MAP[selectedOption.value] || 'en_US',
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to get suggestions");
-      }
-
-      const result = await response.json();
-      console.log('API Response:', result); // Debug log
-
-      const suggestions = result.suggestions[word] || [];
-      console.log('Processed suggestions:', suggestions); // Debug log
-
-      setCurrentSuggestions({
-        suggestions: suggestions,
-        language: result.language
-      });
-    } catch (error) {
-      console.error("Error getting suggestions:", error);
-      toast.error('Failed to get suggestions. Please try again.');
-      setCurrentSuggestions({
-        suggestions: [],
-        language: selectedOption.value
-      });
-    }
-  };
-
-  const replaceWord = (replacement: string) => {
-    if (!selectedWordInfo) return;
-
-    const { start, end } = selectedWordInfo;
-    const contentState = editorState.getCurrentContent();
-    const blockMap = contentState.getBlockMap();
-
-    let targetBlock: ContentBlock | null = null;
-    let blockStart = 0;
-
-    blockMap.forEach((block) => {
-      if (!block) return;
-      const length = block.getLength();
-      if (blockStart <= start && start < blockStart + length) {
-        targetBlock = block;
-      }
-      blockStart += length + 1;
-    });
-
-    if (!targetBlock) return;
-
-    const blockKey = targetBlock.getKey();
-    const selection = SelectionState.createEmpty(blockKey).merge({
-      anchorOffset: start,
-      focusOffset: end,
-      hasFocus: true,
-    });
-
-    const newContentState = Modifier.replaceText(
-      contentState,
-      selection,
-      replacement
-    );
-
-    const newEditorState = EditorState.push(
-      editorState,
-      newContentState,
-      "replace-text"
-    );
-
-    setEditorState(newEditorState);
-    setIsWindowOpen(false);
-
-    // Remove the replaced word from spelling results
-    const updatedResults = spellingResults.filter(
-      (result) =>
-        !(result.index === start && result.word === selectedWordInfo.word)
-    );
-    setSpellingResults(updatedResults);
-    updateEditorWithSpellingResults(updatedResults);
+    await getSuggestions(word);
   };
 
   const updateEditorWithSpellingResults = (
@@ -531,7 +382,6 @@ const HomePage: React.FC = () => {
               <WordCards
                 suggestions={currentSuggestions.suggestions}
                 language={currentSuggestions.language}
-                onWordClick={replaceWord}
               />
             ) : (
               <p style={{ textAlign: "center", color: "white", fontSize: "14px" }}>
