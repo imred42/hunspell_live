@@ -144,7 +144,7 @@ const HomePage: React.FC = () => {
         class="misspelled" 
         data-word="${misspelledWord}"
         data-start="${wordStart}"
-        style="text-decoration: underline red; cursor: help; font-style: italic;"
+        style="text-decoration: solid underline red 4px; cursor: help; font-style: italic;"
       >${misspelledWord}</span>`;
       
       lastIndex = wordEnd;
@@ -219,6 +219,37 @@ const HomePage: React.FC = () => {
       noSuggestionsElement.style.fontStyle = 'italic';
       popup.appendChild(noSuggestionsElement);
     } else {
+      // Add ignore option at the top
+      const ignoreElement = document.createElement('div');
+      ignoreElement.textContent = 'Ignore';
+      ignoreElement.style.padding = '8px 16px';
+      ignoreElement.style.cursor = 'pointer';
+      ignoreElement.style.fontSize = '20px';
+      ignoreElement.style.fontWeight = 'bold';
+      ignoreElement.style.color = '#6b7280';
+      ignoreElement.style.borderBottom = '1px solid #e5e7eb';
+      ignoreElement.style.margin = '0';
+      
+      ignoreElement.addEventListener('mouseover', () => {
+        ignoreElement.style.backgroundColor = '#f3f4f6';
+        ignoreElement.style.color = '#4b5563';
+      });
+      ignoreElement.addEventListener('mouseout', () => {
+        ignoreElement.style.backgroundColor = 'transparent';
+        ignoreElement.style.color = '#6b7280';
+      });
+      ignoreElement.addEventListener('click', () => {
+        // Remove decoration and update spelling results
+        if (element && editorRef.current) {
+          element.outerHTML = word;
+          setSpellingResults(prev => 
+            prev.filter(result => !(result.word === word && result.index === startPosition))
+          );
+        }
+        document.body.removeChild(popup);
+      });
+      popup.appendChild(ignoreElement);
+
       suggestions.suggestions.forEach(suggestion => {
         const suggestionElement = document.createElement('div');
         suggestionElement.textContent = suggestion;
