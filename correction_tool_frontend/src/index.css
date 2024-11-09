@@ -98,7 +98,7 @@ a {
   content: attr(data-placeholder);
   color: #9ca3af;
   font-style: italic;
-  font-size: 30px;
+  font-size: 24px;
 }
 
 [contenteditable]:focus {

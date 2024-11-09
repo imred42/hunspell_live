@@ -4,7 +4,7 @@ import VisualKeyboard from "./VisualKeyboard";
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer } from 'react-toastify';
-import { FaTrashAlt } from 'react-icons/fa';
+import { FaTrashAlt, FaPaste } from 'react-icons/fa';
 import { useSpellChecker } from '../hooks/useSpellChecker';
 import { styles } from '../styles/HomePage.styles';
 import * as HoverCard from "@radix-ui/react-hover-card";
@@ -60,9 +60,24 @@ const HomePage: React.FC = () => {
     }
   };
 
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (editorRef.current) {
+        editorRef.current.innerHTML = text;
+        setText(text);
+        setSpellingResults([]);
+      }
+    } catch (err) {
+      toast.error('Unable to access clipboard');
+    }
+  };
+
   const handleTextChange = (event: React.FormEvent<HTMLDivElement>) => {
     const newText = event.currentTarget.innerText;
     setText(newText);
+    
+    // Clear spelling results when text changes
     setSpellingResults([]);
     
     // Get the current selection
@@ -70,11 +85,12 @@ const HomePage: React.FC = () => {
     if (selection && selection.rangeCount > 0) {
       const range = selection.getRangeAt(0);
       
-      // If the cursor is inside or next to a decorated span, normalize the text
+      // If the cursor is inside or next to a decorated span, or if the text is empty, normalize the text
       const parentSpan = range.startContainer.parentElement;
       if (parentSpan?.classList.contains('misspelled') || 
           (range.startContainer.previousSibling?.nodeName === 'SPAN' || 
-           range.startContainer.nextSibling?.nodeName === 'SPAN')) {
+           range.startContainer.nextSibling?.nodeName === 'SPAN') ||
+          newText.length === 0) {
         // Create a new text node with the entire content
         const textNode = document.createTextNode(newText);
         
@@ -128,7 +144,7 @@ const HomePage: React.FC = () => {
         class="misspelled" 
         data-word="${misspelledWord}"
         data-start="${wordStart}"
-        style="text-decoration: underline dashed red; color: red; cursor: help; font-style: italic;"
+        style="text-decoration: underline red; cursor: help; font-style: italic;"
       >${misspelledWord}</span>`;
       
       lastIndex = wordEnd;
@@ -347,13 +363,13 @@ const HomePage: React.FC = () => {
             onCharacterClick={handleCharacterInsert}
             characters={currentSpecialCharacters}
           />
-          <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '8px', gap: '8px' }}>
             <button
               onClick={handleClearText}
               style={{
                 backgroundColor: 'white',
                 color: '#ef4444',
-                border: '#ef4444  1px solid',
+                border: '#ef4444 1px solid',
                 borderRadius: '6px',
                 padding: '10px 12px',
                 cursor: 'pointer',
@@ -361,9 +377,44 @@ const HomePage: React.FC = () => {
                 alignItems: 'center',
                 gap: '8px',
                 fontSize: '16px',
+                transition: 'all 0.2s ease-in-out',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.backgroundColor = '#ef4444';
+                e.currentTarget.style.color = 'white';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.backgroundColor = 'white';
+                e.currentTarget.style.color = '#ef4444';
               }}
             >
               <FaTrashAlt />
+            </button>
+            <button
+              onClick={handlePaste}
+              style={{
+                backgroundColor: 'white',
+                color: '#3b82f6',
+                border: '#3b82f6 1px solid',
+                borderRadius: '6px',
+                padding: '10px 12px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '16px',
+                transition: 'all 0.2s ease-in-out',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.backgroundColor = '#3b82f6';
+                e.currentTarget.style.color = 'white';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.backgroundColor = 'white';
+                e.currentTarget.style.color = '#3b82f6';
+              }}
+            >
+              <FaPaste />
             </button>
           </div>
           <div

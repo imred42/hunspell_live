@@ -66,7 +66,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({ options, value, onChang
           fontWeight: '500',
           transition: 'border-color 0.2s',
           ':hover': {
-            borderColor: '#cbd5e1'
+            borderColor: '#cbd5e1',
           }
         }}
       >
@@ -131,13 +131,19 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({ options, value, onChang
                   display: 'flex',
                   alignItems: 'center',
                   fontSize: '18px',
-                  color: '#1e293b'
+                  color: '#1e293b',
+                  transition: 'all 0.2s ease',
+                  position: 'relative'
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#f1f5f9';
+                  e.currentTarget.style.paddingLeft = '20px';
+                  e.currentTarget.style.color = '#0f172a';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = '';
+                  e.currentTarget.style.paddingLeft = '14px';
+                  e.currentTarget.style.color = '#1e293b';
                 }}
               >
                 {option.label}

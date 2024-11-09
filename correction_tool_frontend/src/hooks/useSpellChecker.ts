@@ -6,7 +6,7 @@ import { toast } from 'react-toastify';
 
 export const useSpellChecker = (selectedLanguage: string) => {
   const [spellingResults, setSpellingResults] = useState<SpellingResult[]>([]);
-  const [currentSuggestions, setCurrentSuggestions] = useState<SpellingSuggestion | null>(null);
+  const [suggestionCache, setSuggestionCache] = useState<Record<string, string[]>>({});
 
   const checkSpelling = async (text: string) => {
     if (!text.trim()) {
@@ -44,6 +44,8 @@ export const useSpellChecker = (selectedLanguage: string) => {
         .filter((res: { word: string; is_correct: boolean }) => !res.is_correct)
         .map((res: { word: string; is_correct: boolean }) => res.word);
 
+      await getSuggestionsForWords(incorrectWords);
+
       const newResults = wordsWithIndices
         .filter(({ word }) => 
           incorrectWords.some(incorrect => 
@@ -63,7 +65,37 @@ export const useSpellChecker = (selectedLanguage: string) => {
     }
   };
 
+  const getSuggestionsForWords = async (words: string[]) => {
+    try {
+      const response = await apiRequest("/api/get-list/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          words,
+          language: LANGUAGE_CODE_MAP[selectedLanguage] || 'en_US',
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to get suggestions");
+
+      const result = await response.json();
+      setSuggestionCache(prev => ({
+        ...prev,
+        ...result.suggestions
+      }));
+    } catch (error) {
+      console.error("Error getting suggestions:", error);
+    }
+  };
+
   const getSuggestions = async (word: string) => {
+    if (suggestionCache[word]) {
+      return {
+        suggestions: suggestionCache[word],
+        language: selectedLanguage
+      };
+    }
+
     try {
       const response = await apiRequest("/api/get-list/", {
         method: "POST",
@@ -77,13 +109,17 @@ export const useSpellChecker = (selectedLanguage: string) => {
       if (!response.ok) throw new Error("Failed to get suggestions");
 
       const result = await response.json();
-      const suggestions = {
-        suggestions: result.suggestions[word] || [],
-        language: result.language
-      };
+      const suggestions = result.suggestions[word] || [];
       
-      setCurrentSuggestions(suggestions);
-      return suggestions;
+      setSuggestionCache(prev => ({
+        ...prev,
+        [word]: suggestions
+      }));
+
+      return {
+        suggestions,
+        language: selectedLanguage
+      };
     } catch (error) {
       console.error("Error getting suggestions:", error);
       toast.error('Failed to get suggestions. Please try again.');
@@ -91,14 +127,13 @@ export const useSpellChecker = (selectedLanguage: string) => {
         suggestions: [],
         language: selectedLanguage
       };
-      setCurrentSuggestions(fallback);
       return fallback;
     }
   };
 
   return {
     spellingResults,
-    currentSuggestions,
+    suggestionCache,
     checkSpelling,
     getSuggestions,
   };
