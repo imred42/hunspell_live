@@ -5,61 +5,16 @@ import {
   CompositeDecorator,
   Modifier,
   SelectionState,
-  ContentBlock,
-  ContentState,
 } from "draft-js";
 import "draft-js/dist/Draft.css";
 import CustomDropdown from "./CustomDropdown";
-import DraggableWindow from "./DraggableWindow";
-import WordCards from "./WordCards";
 import VisualKeyboard from "./VisualKeyboard";
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer } from 'react-toastify';
 import { FaTrashAlt } from 'react-icons/fa';
 import { useSpellChecker } from '../hooks/useSpellChecker';
-
-// Types for the main component
-interface SpellingSuggestion {
-  suggestions: string[];  // Array of suggested corrections
-  language: string;      // Language code (e.g., 'en', 'es')
-}
-
-interface SpellingResult {
-  index: number;
-  word: string;
-  length: number;
-}
-
-interface LanguageOption {
-  label: string;
-  value: string;
-}
-
-// Add this mapping at the top of the file, after the interfaces
-const LANGUAGE_CODE_MAP: { [key: string]: string } = {
-  'en': 'en_US',
-  'es': 'es_ES',
-  'fr': 'fr_FR',
-  'de': 'de_DE',
-  'it': 'it_IT',
-  'pt': 'pt_PT'
-};
-
-const clearButtonStyle = {
-  backgroundColor: "white",
-  color: "#dc3545",
-  padding: "6px 10px",
-  fontSize: "6px",
-  fontWeight: "500",
-  border: "#dc3545 solid 2px",
-  borderRadius: "4px",
-  cursor: "pointer",
-  display: "flex",
-  alignItems: "center",
-  gap: "6px",
-  transition: "all 0.2s ease",
-} as const;
+import { styles } from '../styles/HomePage.styles';
 
 const HomePage: React.FC = () => {
   const [selectedOption, setSelectedOption] = useState<LanguageOption>(() => {
@@ -75,23 +30,12 @@ const HomePage: React.FC = () => {
   });
   const [editorState, setEditorState] = useState(EditorState.createEmpty());
   const [spellingResults, setSpellingResults] = useState<SpellingResult[]>([]);
-  const [isWindowOpen, setIsWindowOpen] = useState(false);
-  const [windowPosition, setWindowPosition] = useState({ x: 0, y: 0 });
-  const [currentSuggestions, setCurrentSuggestions] =
-    useState<SpellingSuggestion | null>(null);
-  const [selectedWordInfo, setSelectedWordInfo] = useState<{
-    word: string;
-    start: number;
-    end: number;
-  } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<Editor>(null);
 
   const { 
-    spellingResults: spellResults, 
+    checkSpelling,
     currentSuggestions: spellSuggestions, 
-    checkSpelling, 
-    getSuggestions 
   } = useSpellChecker(selectedOption.value);
 
   const options: LanguageOption[] = [
@@ -121,9 +65,7 @@ const HomePage: React.FC = () => {
     const oldContent = editorState.getCurrentContent();
     const newContent = newEditorState.getCurrentContent();
 
-    // Check if the content has actually changed
     if (oldContent !== newContent) {
-      setIsWindowOpen(false);
       setSpellingResults([]);
     }
 
@@ -143,23 +85,6 @@ const HomePage: React.FC = () => {
     }
   };
 
-  const handleWordClick = async (
-    word: string,
-    start: number,
-    end: number,
-    event: React.MouseEvent
-  ) => {
-    const mouseX = event.clientX;
-    const mouseY = event.clientY;
-    
-    setSelectedWordInfo({ word, start, end });
-    setWindowPosition({ x: mouseX, y: mouseY });
-    setIsWindowOpen(true);
-    setCurrentSuggestions(null);
-
-    await getSuggestions(word);
-  };
-
   const updateEditorWithSpellingResults = (
     results: SpellingResult[],
     selection?: SelectionState
@@ -175,15 +100,12 @@ const HomePage: React.FC = () => {
             const searchWord = result.word;
             
             while (true) {
-              // Find the next occurrence of the word
               const index = text.slice(start).indexOf(searchWord);
               if (index === -1) break;
               
-              // Calculate the absolute position
               const absoluteStart = start + index;
               const absoluteEnd = absoluteStart + searchWord.length;
               
-              // Verify this is a whole word match
               const beforeChar = absoluteStart > 0 ? text[absoluteStart - 1] : ' ';
               const afterChar = absoluteEnd < text.length ? text[absoluteEnd] : ' ';
               
@@ -197,12 +119,6 @@ const HomePage: React.FC = () => {
         },
         component: ({
           children,
-          decoratedText,
-          contentState,
-          entityKey,
-          blockKey,
-          start,
-          end,
         }) => (
           <span
             style={{
@@ -212,7 +128,6 @@ const HomePage: React.FC = () => {
               fontStyle: "italic",
               color:"red"
             }}
-            onClick={(e) => handleWordClick(decoratedText, start, end, e)}
           >
             {children}
           </span>
@@ -239,7 +154,6 @@ const HomePage: React.FC = () => {
       "insert-characters"
     );
     setEditorState(newEditorState);
-    setIsWindowOpen(false);
   };
 
   // Disable scrolling on the entire page
@@ -272,34 +186,19 @@ const HomePage: React.FC = () => {
   return (
     <div
       ref={containerRef}
-      style={{
-        height: "100vh",
-        minHeight: "100vh",
-        width: "900px",
-        padding: "48px 0",
-        position: "relative", // Ensure the container is positioned relative for absolute children
-      }}
+      style={styles.container}
       onClick={focusEditor}
     >
-      <div style={{ maxWidth: "800px", margin: "0 auto", padding: "0 16px" }}>
-        <h1
-          style={{
-            fontSize: "38px",
-            fontWeight: "bold",
-            textAlign: "center",
-            marginBottom: "32px",
-          }}
-        >
+      <div style={styles.content}>
+        <h1 style={styles.title}>
           Spell Checking Tool
         </h1>
 
-        <div
-          style={{
-            backgroundColor: "white",
-            borderRadius: "8px",
-            padding: "24px",
-          }}
-        >
+        <div style={{
+          backgroundColor: "white",
+          borderRadius: "8px",
+          padding: "24px",
+        }}>
           <CustomDropdown
             options={options}
             value={selectedOption}
@@ -323,7 +222,7 @@ const HomePage: React.FC = () => {
                 target.style.backgroundColor = "white";
                 target.style.color = "#dc3545";
               }}
-              style={clearButtonStyle}
+              style={styles.clearButton}
             >
               <FaTrashAlt size={12} />
             </button>
@@ -332,17 +231,7 @@ const HomePage: React.FC = () => {
             onCharacterClick={handleCharacterInsert}
             characters={currentSpecialCharacters}
           />
-          <div
-            style={{
-              border: "1px solid #008fee",
-              borderRadius: "4px",
-              marginTop: "16px",
-              marginBottom: "10px",
-              padding: "8px",
-              fontSize: "24px",
-              minHeight: "300px",
-            }}
-          >
+          <div style={styles.editor}>
             <Editor
               ref={editorRef}
               editorState={editorState}
@@ -352,45 +241,12 @@ const HomePage: React.FC = () => {
           </div>
           <button
             onClick={handleCheckSpelling}
-            style={{
-              backgroundColor: "#008fee",
-              color: "white",
-              padding: "12px 24px",
-              fontSize: "18px",
-              fontWeight: "bold",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
+            style={styles.checkButton}
           >
             Check Spelling
           </button>
         </div>
       </div>
-      <DraggableWindow
-        isOpen={isWindowOpen}
-        onClose={() => setIsWindowOpen(false)}
-        initialPosition={windowPosition}
-        parentRef={containerRef}
-        content={
-          <div>
-            {currentSuggestions === null ? (
-              <p style={{ textAlign: "center", color: "white", fontSize: "14px" }}>
-                Loading suggestions...
-              </p>
-            ) : currentSuggestions.suggestions.length > 0 ? (
-              <WordCards
-                suggestions={currentSuggestions.suggestions}
-                language={currentSuggestions.language}
-              />
-            ) : (
-              <p style={{ textAlign: "center", color: "white", fontSize: "14px" }}>
-                No suggestions available
-              </p>
-            )}
-          </div>
-        }
-      />
       <ToastContainer
         position="top-center"
         autoClose={2000}
