@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { EditorState } from 'draft-js';
+import { EditorState, SelectionState, Modifier } from 'draft-js';
 import { apiRequest } from '../utils/config';
 import { SpellingResult, SpellingSuggestion } from '../types/spelling';
 import { LANGUAGE_CODE_MAP } from '../constants/language';
@@ -97,10 +97,53 @@ export const useSpellChecker = (selectedLanguage: string) => {
     }
   };
 
+  const replaceWord = (editorState: EditorState, oldWord: string, newWord: string, startIndex: number) => {
+    const contentState = editorState.getCurrentContent();
+    const blockMap = contentState.getBlockMap();
+    
+    let totalOffset = 0;
+    let targetBlock = null;
+    let targetOffset = -1;
+
+    // Find the block containing our word
+    blockMap.forEach(block => {
+      if (targetBlock) return;
+      
+      const text = block.getText();
+      const blockLength = text.length;
+      
+      if (totalOffset <= startIndex && startIndex < totalOffset + blockLength) {
+        targetBlock = block;
+        targetOffset = startIndex - totalOffset;
+      }
+      
+      totalOffset += blockLength + 1; // +1 for newline
+    });
+
+    if (!targetBlock || targetOffset === -1) return editorState;
+
+    // Create selection for the word to replace
+    const selection = SelectionState.createEmpty(targetBlock.getKey())
+      .merge({
+        anchorOffset: targetOffset,
+        focusOffset: targetOffset + oldWord.length,
+      });
+
+    // Replace the text
+    const newContent = Modifier.replaceText(
+      contentState,
+      selection,
+      newWord
+    );
+
+    return EditorState.push(editorState, newContent, 'insert-characters');
+  };
+
   return {
     spellingResults,
     currentSuggestions,
     checkSpelling,
     getSuggestions,
+    replaceWord,
   };
 }; 

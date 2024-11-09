@@ -38,6 +38,7 @@ const HomePage: React.FC = () => {
     checkSpelling,
     getSuggestions,
     currentSuggestions: spellSuggestions, 
+    replaceWord,
   } = useSpellChecker(selectedOption.value);
 
   const options: LanguageOption[] = [
@@ -87,6 +88,16 @@ const HomePage: React.FC = () => {
     }
   };
 
+  const handleSuggestionClick = (suggestion: string, decoratedText: string, start: number) => {
+    const newEditorState = replaceWord(editorState, decoratedText, suggestion, start);
+    setEditorState(newEditorState);
+    
+    // Remove the replaced word from spelling results
+    setSpellingResults(prev => 
+      prev.filter(result => !(result.word === decoratedText && result.index === start))
+    );
+  };
+
   const updateEditorWithSpellingResults = (
     results: SpellingResult[],
     selection?: SelectionState
@@ -122,8 +133,10 @@ const HomePage: React.FC = () => {
         component: ({
           children,
           decoratedText,
+          offsetKey,
         }) => {
           const [suggestions, setSuggestions] = useState<string[]>([]);
+          const startPosition = parseInt(offsetKey.split('-')[0], 10);
           
           const handleHover = async () => {
             const result = await getSuggestions(decoratedText);
@@ -151,7 +164,14 @@ const HomePage: React.FC = () => {
                 <HoverCard.Content className="HoverCardContent" sideOffset={5}>
                   <div style={{ display: "flex", flexDirection: "column", gap: 7, padding: "10px" }}>
                     {suggestions.map((suggestion, index) => (
-                      <div key={index} className="Text">
+                      <div 
+                        key={index} 
+                        className="Text"
+                        onClick={() => handleSuggestionClick(suggestion, decoratedText, startPosition)}
+                        style={{ cursor: 'pointer', padding: '4px' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f0f0f0'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
                         {suggestion}
                       </div>
                     ))}
