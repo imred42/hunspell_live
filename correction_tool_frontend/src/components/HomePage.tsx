@@ -17,6 +17,7 @@ import VisualKeyboard from "./VisualKeyboard";
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer } from 'react-toastify';
+import { FaTrashAlt } from 'react-icons/fa';
 
 // Types for the main component
 interface SpellingSuggestion {
@@ -45,10 +46,32 @@ const LANGUAGE_CODE_MAP: { [key: string]: string } = {
   'pt': 'pt_PT'
 };
 
+const clearButtonStyle = {
+  backgroundColor: "white",
+  color: "#dc3545",
+  padding: "6px 10px",
+  fontSize: "6px",
+  fontWeight: "500",
+  border: "#dc3545 solid 2px",
+  borderRadius: "4px",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  gap: "6px",
+  transition: "all 0.2s ease",
+} as const;
+
 const HomePage: React.FC = () => {
-  const [selectedOption, setSelectedOption] = useState<LanguageOption>({
-    label: "English",
-    value: "en",
+  const [selectedOption, setSelectedOption] = useState<LanguageOption>(() => {
+    const savedLanguage = localStorage.getItem('selectedLanguage');
+    if (savedLanguage) {
+      const parsed = JSON.parse(savedLanguage);
+      return parsed;
+    }
+    return {
+      label: "English",
+      value: "en",
+    };
   });
   const [editorState, setEditorState] = useState(EditorState.createEmpty());
   const [spellingResults, setSpellingResults] = useState<SpellingResult[]>([]);
@@ -73,18 +96,18 @@ const HomePage: React.FC = () => {
     { label: "Português", value: "pt" },
   ];
 
-  const handleSelectChange = async (option: LanguageOption) => {
+  const handleSelectChange = (option: LanguageOption) => {
+    localStorage.setItem('selectedLanguage', JSON.stringify(option));
     setSelectedOption(option);
-    setSpellingResults([]);
-    setIsWindowOpen(false);
-    
-    // Create a new empty editor state with an empty decorator
-    const newEditorState = EditorState.set(
-      EditorState.createEmpty(),
-      { decorator: new CompositeDecorator([]) }
-    );
-    
-    setEditorState(newEditorState);
+    window.location.reload();
+  };
+
+  const handleClear = () => {
+    const currentLanguage = localStorage.getItem('selectedLanguage');
+    window.location.reload();
+    if (currentLanguage) {
+      localStorage.setItem('selectedLanguage', currentLanguage);
+    }
   };
 
   const handleTextChange = (newEditorState: EditorState) => {
@@ -336,7 +359,6 @@ const HomePage: React.FC = () => {
               textDecorationColor: "red",
               cursor: "text",
               fontStyle: "italic",
-              // fontWeight: "bold",
               color:"red"
             }}
             onClick={(e) => handleWordClick(decoratedText, start, end, e)}
@@ -432,6 +454,29 @@ const HomePage: React.FC = () => {
             value={selectedOption}
             onChange={handleSelectChange}
           />
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'flex-start',
+            marginTop: '16px',
+            marginBottom: '16px'
+          }}>
+            <button
+              onClick={handleClear}
+              onMouseEnter={(e) => {
+                const target = e.currentTarget;
+                target.style.backgroundColor = "#dc3545";
+                target.style.color = "white";
+              }}
+              onMouseLeave={(e) => {
+                const target = e.currentTarget;
+                target.style.backgroundColor = "white";
+                target.style.color = "#dc3545";
+              }}
+              style={clearButtonStyle}
+            >
+              <FaTrashAlt size={12} />
+            </button>
+          </div>
           <VisualKeyboard
             onCharacterClick={handleCharacterInsert}
             characters={currentSpecialCharacters}
@@ -441,7 +486,7 @@ const HomePage: React.FC = () => {
               border: "1px solid #008fee",
               borderRadius: "4px",
               marginTop: "16px",
-              marginBottom: "16px",
+              marginBottom: "10px",
               padding: "8px",
               fontSize: "24px",
               minHeight: "300px",
