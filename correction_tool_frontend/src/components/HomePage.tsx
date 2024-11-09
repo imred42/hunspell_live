@@ -52,6 +52,14 @@ const HomePage: React.FC = () => {
     }
   };
 
+  const handleClearText = () => {
+    if (editorRef.current) {
+      editorRef.current.innerHTML = '';
+      setText('');
+      setSpellingResults([]);
+    }
+  };
+
   const handleTextChange = (event: React.FormEvent<HTMLDivElement>) => {
     const newText = event.currentTarget.innerText;
     setText(newText);
@@ -293,7 +301,13 @@ const HomePage: React.FC = () => {
     };
   }, []);
 
-  const focusEditor = () => {
+  const focusEditor = (event: React.MouseEvent) => {
+    // Don't focus editor if clicking within the CustomDropdown
+    if (event.target instanceof Node && 
+        event.target.closest('.custom-dropdown')) {
+      return;
+    }
+    
     if (editorRef.current) {
       editorRef.current.focus();
     }
@@ -326,6 +340,25 @@ const HomePage: React.FC = () => {
             onCharacterClick={handleCharacterInsert}
             characters={currentSpecialCharacters}
           />
+          <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '8px' }}>
+            <button
+              onClick={handleClearText}
+              style={{
+                backgroundColor: 'white',
+                color: '#ef4444',
+                border: '#ef4444  1px solid',
+                borderRadius: '6px',
+                padding: '8px 10px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '14px',
+              }}
+            >
+              <FaTrashAlt />
+            </button>
+          </div>
           <div
             ref={editorRef}
             contentEditable
@@ -349,7 +382,7 @@ const HomePage: React.FC = () => {
       </div>
       <ToastContainer
         position="top-center"
-        autoClose={2000}
+        autoClose={1200}
         hideProgressBar={false}
         newestOnTop={false}
         closeOnClick
