@@ -1,12 +1,4 @@
 import React, { useState, useRef, useEffect } from "react";
-import {
-  Editor,
-  EditorState,
-  CompositeDecorator,
-  Modifier,
-  SelectionState,
-} from "draft-js";
-import "draft-js/dist/Draft.css";
 import CustomDropdown from "./CustomDropdown";
 import VisualKeyboard from "./VisualKeyboard";
 import { toast } from 'react-toastify';
@@ -16,29 +8,28 @@ import { FaTrashAlt } from 'react-icons/fa';
 import { useSpellChecker } from '../hooks/useSpellChecker';
 import { styles } from '../styles/HomePage.styles';
 import * as HoverCard from "@radix-ui/react-hover-card";
+import { LanguageOption, SpellingResult } from '../types/spelling';
 
 const HomePage: React.FC = () => {
   const [selectedOption, setSelectedOption] = useState<LanguageOption>(() => {
     const savedLanguage = localStorage.getItem('selectedLanguage');
     if (savedLanguage) {
-      const parsed = JSON.parse(savedLanguage);
-      return parsed;
+      return JSON.parse(savedLanguage);
     }
     return {
       label: "English",
       value: "en",
     };
   });
-  const [editorState, setEditorState] = useState(EditorState.createEmpty());
+  
+  const [text, setText] = useState('');
   const [spellingResults, setSpellingResults] = useState<SpellingResult[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
-  const editorRef = useRef<Editor>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
 
   const { 
     checkSpelling,
     getSuggestions,
-    currentSuggestions: spellSuggestions, 
-    replaceWord,
   } = useSpellChecker(selectedOption.value);
 
   const options: LanguageOption[] = [
@@ -58,159 +49,184 @@ const HomePage: React.FC = () => {
 
   const handleClear = () => {
     const currentLanguage = localStorage.getItem('selectedLanguage');
-    window.location.reload();
+    if (editorRef.current) {
+      editorRef.current.innerHTML = '';
+      setText('');
+      setSpellingResults([]);
+    }
     if (currentLanguage) {
       localStorage.setItem('selectedLanguage', currentLanguage);
     }
   };
 
-  const handleTextChange = (newEditorState: EditorState) => {
-    const oldContent = editorState.getCurrentContent();
-    const newContent = newEditorState.getCurrentContent();
-
-    if (oldContent !== newContent) {
-      setSpellingResults([]);
+  const handleTextChange = (event: React.FormEvent<HTMLDivElement>) => {
+    const newText = event.currentTarget.innerText;
+    setText(newText);
+    setSpellingResults([]);
+    
+    // Ensure cursor stays at the end of content
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const lastChild = event.currentTarget.lastChild;
+      if (lastChild) {
+        range.setStartAfter(lastChild);
+        range.setEndAfter(lastChild);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
     }
-
-    setEditorState(newEditorState);
   };
 
   const handleCheckSpelling = async () => {
-    const contentState = editorState.getCurrentContent();
-    const text = contentState.getPlainText();
+    if (!text.trim()) {
+      toast.warning('Please enter some text to check spelling');
+      return;
+    }
     
     const newResults = await checkSpelling(text);
     if (newResults.length > 0) {
-      updateEditorWithSpellingResults(newResults);
+      highlightMisspelledWords(newResults);
       toast.error(`Found ${newResults.length} spelling error${newResults.length === 1 ? '' : 's'}`);
     } else {
       toast.success('No spelling errors found!');
     }
   };
 
-  const handleSuggestionClick = (suggestion: string, decoratedText: string, start: number) => {
-    const newEditorState = replaceWord(editorState, decoratedText, suggestion, start);
-    setEditorState(newEditorState);
+  const highlightMisspelledWords = (results: SpellingResult[]) => {
+    if (!editorRef.current) return;
+
+    const textContent = editorRef.current.innerText;
+    let html = '';
+    let lastIndex = 0;
+
+    results.forEach((result) => {
+      const wordStart = result.index;
+      const wordEnd = result.index + result.word.length;
+      
+      // Add text before the misspelled word
+      html += textContent.slice(lastIndex, wordStart);
+      
+      // Add the misspelled word with highlighting
+      const misspelledWord = textContent.slice(wordStart, wordEnd);
+      html += `<span 
+        class="misspelled" 
+        data-word="${misspelledWord}"
+        data-start="${wordStart}"
+        style="text-decoration: underline dashed red; color: red; cursor: pointer;"
+      >${misspelledWord}</span>`;
+      
+      lastIndex = wordEnd;
+    });
+
+    // Add any remaining text
+    html += textContent.slice(lastIndex);
+    editorRef.current.innerHTML = html;
+    setSpellingResults(results);
+
+    // Add click handlers to misspelled words
+    const misspelledElements = editorRef.current.getElementsByClassName('misspelled');
+    Array.from(misspelledElements).forEach(element => {
+      element.addEventListener('click', handleMisspelledWordClick);
+    });
+  };
+
+  const handleMisspelledWordClick = async (event: Event) => {
+    const element = event.target as HTMLSpanElement;
+    const word = element.dataset.word;
+    const startPosition = parseInt(element.dataset.start || '0', 10);
+    
+    if (!word) return;
+
+    const suggestions = await getSuggestions(word);
+    
+    // Create and show suggestions popup
+    const popup = document.createElement('div');
+    popup.style.position = 'absolute';
+    popup.style.left = `${element.offsetLeft}px`;
+    popup.style.top = `${element.offsetTop + element.offsetHeight}px`;
+    popup.style.backgroundColor = 'white';
+    popup.style.border = '1px solid #ccc';
+    popup.style.borderRadius = '4px';
+    popup.style.padding = '8px';
+    popup.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+    popup.style.zIndex = '1000';
+
+    suggestions.suggestions.forEach(suggestion => {
+      const suggestionElement = document.createElement('div');
+      suggestionElement.textContent = suggestion;
+      suggestionElement.style.padding = '4px 8px';
+      suggestionElement.style.cursor = 'pointer';
+      suggestionElement.addEventListener('mouseover', () => {
+        suggestionElement.style.backgroundColor = '#f0f0f0';
+      });
+      suggestionElement.addEventListener('mouseout', () => {
+        suggestionElement.style.backgroundColor = 'transparent';
+      });
+      suggestionElement.addEventListener('click', () => {
+        handleSuggestionClick(suggestion, word, startPosition);
+        document.body.removeChild(popup);
+      });
+      popup.appendChild(suggestionElement);
+    });
+
+    document.body.appendChild(popup);
+
+    // Remove popup when clicking outside
+    const handleClickOutside = (e: MouseEvent) => {
+      if (!popup.contains(e.target as Node) && document.body.contains(popup)) {
+        document.body.removeChild(popup);
+        document.removeEventListener('click', handleClickOutside);
+      }
+    };
+    setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 0);
+  };
+
+  const handleSuggestionClick = (suggestion: string, originalWord: string, startPosition: number) => {
+    if (!editorRef.current) return;
+
+    const content = editorRef.current.innerHTML;
+    const regex = new RegExp(`<span[^>]*data-word="${originalWord}"[^>]*>${originalWord}</span>`);
+    const newContent = content.replace(regex, suggestion);
+    editorRef.current.innerHTML = newContent;
+    
+    // Update text state
+    setText(editorRef.current.innerText);
     
     // Remove the replaced word from spelling results
     setSpellingResults(prev => 
-      prev.filter(result => !(result.word === decoratedText && result.index === start))
+      prev.filter(result => !(result.word === originalWord && result.index === startPosition))
     );
-  };
-
-  const updateEditorWithSpellingResults = (
-    results: SpellingResult[],
-    selection?: SelectionState
-  ) => {
-    const currentSelection = editorState.getSelection();
-
-    const decorator = new CompositeDecorator([
-      {
-        strategy: (contentBlock, callback) => {
-          const text = contentBlock.getText();
-          results.forEach((result) => {
-            let start = 0;
-            const searchWord = result.word;
-            
-            while (true) {
-              const index = text.slice(start).indexOf(searchWord);
-              if (index === -1) break;
-              
-              const absoluteStart = start + index;
-              const absoluteEnd = absoluteStart + searchWord.length;
-              
-              const beforeChar = absoluteStart > 0 ? text[absoluteStart - 1] : ' ';
-              const afterChar = absoluteEnd < text.length ? text[absoluteEnd] : ' ';
-              
-              if (!/\p{L}/u.test(beforeChar) && !/\p{L}/u.test(afterChar)) {
-                callback(absoluteStart, absoluteEnd);
-              }
-              
-              start = absoluteStart + 1;
-            }
-          });
-        },
-        component: ({
-          children,
-          decoratedText,
-          offsetKey,
-        }) => {
-          const [suggestions, setSuggestions] = useState<string[]>([]);
-          const startPosition = parseInt(offsetKey.split('-')[0], 10);
-          
-          const handleHover = async () => {
-            const result = await getSuggestions(decoratedText);
-            setSuggestions(result.suggestions);
-          };
-          
-          return (
-            <HoverCard.Root onOpenChange={(open) => {
-              if (open) handleHover();
-            }}>
-              <HoverCard.Trigger asChild>
-                <span
-                  style={{
-                    textDecoration: "underline dashed",
-                    textDecorationColor: "red",
-                    cursor: "pointer",
-                    fontStyle: "italic",
-                    color: "red"
-                  }}
-                >
-                  {children}
-                </span>
-              </HoverCard.Trigger>
-              <HoverCard.Portal>
-                <HoverCard.Content className="HoverCardContent" sideOffset={5}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 7, padding: "10px" }}>
-                    {suggestions.map((suggestion, index) => (
-                      <div 
-                        key={index} 
-                        className="Text"
-                        onClick={() => handleSuggestionClick(suggestion, decoratedText, startPosition)}
-                        style={{ cursor: 'pointer', padding: '4px' }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f0f0f0'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
-                        {suggestion}
-                      </div>
-                    ))}
-                  </div>
-                  <HoverCard.Arrow className="HoverCardArrow" />
-                </HoverCard.Content>
-              </HoverCard.Portal>
-            </HoverCard.Root>
-          );
-        },
-      },
-    ]);
-
-    let newEditorState = EditorState.set(editorState, { decorator });
-    newEditorState = EditorState.forceSelection(newEditorState, currentSelection);
-    setEditorState(newEditorState);
   };
 
   const handleCharacterInsert = (character: string) => {
-    const contentState = editorState.getCurrentContent();
-    const selectionState = editorState.getSelection();
-    const newContentState = Modifier.insertText(
-      contentState,
-      selectionState,
-      character
-    );
-    const newEditorState = EditorState.push(
-      editorState,
-      newContentState,
-      "insert-characters"
-    );
-    setEditorState(newEditorState);
+    if (!editorRef.current) return;
+    
+    // Get the current selection
+    const selection = window.getSelection();
+    if (!selection || !selection.rangeCount) return;
+    
+    const range = selection.getRangeAt(0);
+    const textNode = document.createTextNode(character);
+    range.insertNode(textNode);
+    
+    // Move cursor after inserted character
+    range.setStartAfter(textNode);
+    range.setEndAfter(textNode);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    
+    // Update text state
+    setText(editorRef.current.innerText);
   };
 
   // Disable scrolling on the entire page
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = "auto"; // Re-enable scrolling when component unmounts
+      document.body.style.overflow = "auto";
     };
   }, []);
 
@@ -220,18 +236,9 @@ const HomePage: React.FC = () => {
     }
   };
 
-  const languageSpecialCharacters: { [key: string]: string[] } = {
-    en: [], // English has no special characters
-    es: ['á', 'é', 'í', 'ó', 'ú', 'ñ', 'ü'],
-    fr: ['à', 'â', 'ç', 'é', 'è', 'ê', 'ë', 'î', 'ï', 'ô', 'ù', 'û', 'ü', 'ÿ'],
-    de: ['ä', 'ö', 'ü', 'ß'],
-    it: ['à', 'è', 'é', 'ì', 'î', 'ò', 'ù'],
-    pt: ['á', 'â', 'ã', 'ç', 'é', 'ê', 'í', 'ó', 'ô', 'õ', 'ú'],
-    // Add more languages and their special characters as needed
-  };
-
-  const currentSpecialCharacters =
-    languageSpecialCharacters[selectedOption.value] || [];
+  const currentSpecialCharacters = options.find(
+    option => option.value === selectedOption.value
+  )?.specialCharacters || [];
 
   return (
     <div
@@ -263,14 +270,12 @@ const HomePage: React.FC = () => {
             <button
               onClick={handleClear}
               onMouseEnter={(e) => {
-                const target = e.currentTarget;
-                target.style.backgroundColor = "#dc3545";
-                target.style.color = "white";
+                e.currentTarget.style.backgroundColor = "#dc3545";
+                e.currentTarget.style.color = "white";
               }}
               onMouseLeave={(e) => {
-                const target = e.currentTarget;
-                target.style.backgroundColor = "white";
-                target.style.color = "#dc3545";
+                e.currentTarget.style.backgroundColor = "white";
+                e.currentTarget.style.color = "#dc3545";
               }}
               style={styles.clearButton}
             >
@@ -281,14 +286,17 @@ const HomePage: React.FC = () => {
             onCharacterClick={handleCharacterInsert}
             characters={currentSpecialCharacters}
           />
-          <div style={styles.editor}>
-            <Editor
-              ref={editorRef}
-              editorState={editorState}
-              onChange={handleTextChange}
-              placeholder="Enter or paste your text here to check spelling"
-            />
-          </div>
+          <div
+            ref={editorRef}
+            contentEditable
+            onInput={handleTextChange}
+            style={{
+              ...styles.editor,
+              textAlign: 'left',
+              caretColor: 'auto',
+            }}
+            placeholder="Enter or paste your text here to check spelling"
+          />
           <button
             onClick={handleCheckSpelling}
             style={styles.checkButton}

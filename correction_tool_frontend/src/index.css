@@ -80,3 +80,12 @@ a {
 .Text.faded {
   color: #71717a;
 }
+
+[contenteditable] {
+  -webkit-user-modify: read-write-plaintext-only;
+  user-modify: read-write-plaintext-only;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  -webkit-user-select: text;
+  user-select: text;
+}
